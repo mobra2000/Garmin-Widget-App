@@ -124,6 +124,7 @@ private fun WidgetRoot(state: WidgetState) {
 }
 
 /** Hintergrund des gesamten Widgets mit dem System-Eckenradius (Pixel-Look). */
+@Composable
 private fun GlanceModifier.widgetBackgroundShape(): GlanceModifier {
     val base = this.appWidgetBackground().background(GlanceTheme.colors.widgetBackground)
     return if (Build.VERSION.SDK_INT >= 31) {
