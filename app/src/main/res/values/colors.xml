@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="window_background">#FFF7F9FC</color>
+    <color name="launcher_background">#FF0A1A2B</color>
+    <color name="launcher_accent">#FF11A9ED</color>
+    <!-- Farben der Widget-Vorschau im Widget-Picker (vor Android 12) -->
+    <color name="preview_background">#FFF0F4F9</color>
+    <color name="preview_tile">#FFD3E4F5</color>
+    <color name="preview_text">#FF0B1D2E</color>
+</resources>

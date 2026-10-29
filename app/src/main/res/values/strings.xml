@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Garmin Widget</string>
+    <string name="widget_name">Garmin Widget</string>
+    <string name="widget_description">Trainingszustand, Schlaf, Body Battery und mehr – von 1×1 bis 4×4</string>
+</resources>

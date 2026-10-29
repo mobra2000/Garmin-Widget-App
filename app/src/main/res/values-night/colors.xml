@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="window_background">#FF0B0F14</color>
+    <color name="preview_background">#FF1A1F26</color>
+    <color name="preview_tile">#FF2A3542</color>
+    <color name="preview_text">#FFE3E9F0</color>
+</resources>
