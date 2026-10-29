@@ -11,12 +11,10 @@ import androidx.compose.ui.unit.min
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
-import androidx.glance.LocalContext
 import androidx.glance.LocalSize
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
-import androidx.glance.appwidget.AndroidRemoteViews
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
@@ -24,8 +22,6 @@ import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.appWidgetBackground
 import androidx.glance.appwidget.cornerRadius
-import androidx.glance.appwidget.lazy.LazyColumn
-import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -42,7 +38,6 @@ import androidx.glance.layout.size
 import androidx.glance.layout.width
 import de.mbraisch.garminwidget.R
 import de.mbraisch.garminwidget.data.AppStore
-import de.mbraisch.garminwidget.data.DisplayMode
 import de.mbraisch.garminwidget.data.MetricValue
 import de.mbraisch.garminwidget.data.Snapshot
 import de.mbraisch.garminwidget.data.WidgetSettings
@@ -64,7 +59,8 @@ data class WidgetState(
 )
 
 /**
- * Das Garmin-Widget. [SizeMode.Exact] liefert die tatsächliche Größe, sodass für jede
+ * Das Raster-Widget (1–4 Werte gleichzeitig). Der Wischmodus ist ein eigenes Widget,
+ * siehe [SwipeWidgetProvider]. [SizeMode.Exact] liefert die tatsächliche Größe, sodass für jede
  * Rastergröße von 1×1 bis 4×4 ein eigenes Layout gewählt wird (siehe [WidgetLayout]).
  */
 class GarminWidget : GlanceAppWidget() {
@@ -113,7 +109,6 @@ private fun WidgetRoot(state: WidgetState) {
         !state.loggedIn -> MessageWidget(if (layout.isTiny) "Anmelden" else "In der App anmelden", openApp = true)
         state.settings.tiles.isEmpty() -> MessageWidget("Kacheln wählen", openApp = true)
         state.snapshot.fetchedAt == 0L -> MessageWidget(if (state.syncing) "Lädt…" else "Keine Daten", openApp = true)
-        state.settings.mode == DisplayMode.SWIPE -> SwipeWidget(state, layout)
         else -> GridWidget(state, layout)
     }
 }
@@ -242,51 +237,6 @@ private fun TileGroup(values: List<MetricValue>, w: Dp, h: Dp, detailed: Boolean
 }
 
 private enum class Arrangement { SINGLE, ROW, COLUMN, GRID }
-
-// ---------------------------------------------------------------------------
-// Wischmodus: 1–2 Werte pro Seite, ein Wisch = eine Seite weiter
-// ---------------------------------------------------------------------------
-
-@Composable
-private fun SwipeWidget(state: WidgetState, layout: WidgetLayout) {
-    val perPage = if (layout.isTiny) 1 else state.settings.perPage
-    val pages = state.settings.tiles.map { state.snapshot[it] }.chunked(perPage)
-
-    if (Build.VERSION.SDK_INT >= 31) {
-        // Kartenstapel: rastet pro Wischbewegung auf der nächsten Seite ein
-        val context = LocalContext.current
-        AndroidRemoteViews(
-            remoteViews = SwipeViews.build(
-                context = context,
-                pages = pages,
-                widthDp = layout.width.value,
-                heightDp = layout.height.value,
-                detailed = layout.detailed,
-            ),
-            modifier = GlanceModifier.fillMaxSize(),
-        )
-        return
-    }
-
-    // Ältere Android-Versionen: scrollbare Liste, jede Seite so hoch wie das Widget
-    val pad = layout.padding
-    val innerW = layout.width - pad * 2
-    val innerH = layout.height - pad * 2
-    Box(
-        modifier = GlanceModifier
-            .fillMaxSize()
-            .widgetBackgroundShape()
-            .padding(pad),
-    ) {
-        LazyColumn(modifier = GlanceModifier.fillMaxSize()) {
-            items(pages.indices.toList(), itemId = { it.toLong() }) { index ->
-                Box(modifier = GlanceModifier.fillMaxWidth().height(innerH)) {
-                    TileGroup(pages[index], innerW, innerH, layout.detailed)
-                }
-            }
-        }
-    }
-}
 
 // ---------------------------------------------------------------------------
 // Kopfzeile (nur große Widgets): Uhrzeit + Aktualisieren

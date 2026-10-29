@@ -23,10 +23,10 @@ Ordner öffnen → warten bis Gradle fertig ist → Handy per USB anschließen �
 ## Erster Start
 
 1. App öffnen → **Bei Garmin anmelden** (die echte Garmin-Anmeldeseite, inkl. Zwei-Faktor-Code).
-2. Startbildschirm lange drücken → Widgets → *Garmin Widget* → Größe frei ziehen (1×1 bis 4×4).
-3. Im Reiter **Widget**: Kacheln auswählen/sortieren und Modus wählen
-   - **Mehrere Werte**: 1×1 → 1, 2×1/1×2 → 2, 3×1 → 3, ab 2×2 bzw. 4×1 → 4 Werte; große Widgets mit Ringanzeigen und Details
-   - **Wischen**: 1 oder 2 Werte pro Seite; ein Wisch nach oben/unten blättert wie ein Kartenstapel genau eine Seite weiter (ab Android 12)
+2. Startbildschirm lange drücken → Widgets → *Garmin Widget*. Es gibt zwei Widgets (Größe frei ziehbar, 1×1 bis 4×4):
+   - **Garmin Raster**: 1×1 → 1, 2×1/1×2 → 2, 3×1 → 3, ab 2×2 → 4 Werte gleichzeitig; ab 3×4 mit kleinen Zusatzinfos
+   - **Garmin Wischen**: Kartenstapel mit 1 oder 2 Werten pro Seite; ein Wisch nach oben/unten blättert genau eine Seite weiter
+3. Im Reiter **Widget**: Kacheln auswählen und sortieren.
 4. Tippen aufs Widget öffnet Garmin Connect (umstellbar auf diese App).
 
 ## Gut zu wissen

@@ -173,7 +173,7 @@ fun AccountScreen(vm: MainViewModel, onLogin: () -> Unit, modifier: Modifier = M
 
         item {
             Text(
-                "Garmin Widget 1.1 · Symbole: Material Symbols (Apache 2.0)",
+                "Garmin Widget 1.2 · Symbole: Material Symbols (Apache 2.0)",
                 style = MaterialTheme.typography.labelSmall,
                 color = scheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 8.dp),

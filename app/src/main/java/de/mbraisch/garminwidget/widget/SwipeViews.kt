@@ -1,25 +1,20 @@
 package de.mbraisch.garminwidget.widget
 
-import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
+import android.os.Build
 import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
 import androidx.annotation.ColorRes
-import androidx.annotation.RequiresApi
 import de.mbraisch.garminwidget.R
 import de.mbraisch.garminwidget.data.Accent
 import de.mbraisch.garminwidget.data.MetricValue
 import de.mbraisch.garminwidget.data.Tone
-import de.mbraisch.garminwidget.ui.OpenFromWidgetActivity
 
 /**
- * Wischmodus als Android-Kartenstapel (StackView): Ein Wisch nach oben oder unten
- * blättert genau eine Seite weiter und rastet ein. Glance kennt dieses Element nicht,
- * deshalb wird es hier direkt als RemoteViews gebaut (ab Android 12).
+ * Baut die Seiten des Wisch-Widgets (Kartenstapel) als RemoteViews.
+ * Jede Seite zeigt 1 oder 2 Kacheln – nur Symbol und Wert, bei Platz als Ring.
  */
-@RequiresApi(31)
 object SwipeViews {
 
     private class SlotIds(
@@ -47,57 +42,60 @@ object SwipeViews {
     }
 
     /**
-     * @param widthDp/heightDp Größe des Widgets
-     * @param detailed große Widgets: kurze Zusatzzeile anzeigen
+     * Eine Seite des Stapels.
+     * @param pageW/pageH verfügbare Größe einer Seite in dp
      */
-    fun build(
-        context: Context,
-        pages: List<List<MetricValue>>,
-        widthDp: Float,
-        heightDp: Float,
-        detailed: Boolean,
-    ): RemoteViews {
-        val root = RemoteViews(context.packageName, R.layout.widget_swipe)
-
-        // Innenmaße einer Seite (Rand 6 dp; der Stapel braucht oben etwas Platz für die Karten dahinter)
-        val pageW = widthDp - 12f
-        val pageH = (heightDp - 12f) * 0.88f
+    fun page(context: Context, values: List<MetricValue>, pageW: Float, pageH: Float, detailed: Boolean): RemoteViews {
         val horizontal = pageW >= pageH
-
-        val items = RemoteViews.RemoteCollectionItems.Builder()
-            .setHasStableIds(true)
-            .setViewTypeCount(3)
-        pages.forEachIndexed { index, page ->
-            val item: RemoteViews
-            if (page.size >= 2) {
-                item = RemoteViews(context.packageName, if (horizontal) R.layout.sw_page_2h else R.layout.sw_page_2v)
-                val tileW = if (horizontal) (pageW - 6f) / 2 else pageW
-                val tileH = if (horizontal) pageH else (pageH - 6f) / 2
-                bindTile(item, SLOT_A, page[0], tileW, tileH, detailed)
-                bindTile(item, SLOT_B, page[1], tileW, tileH, detailed)
-            } else {
-                item = RemoteViews(context.packageName, R.layout.sw_page_1)
-                bindTile(item, SLOT_A, page[0], pageW, pageH, detailed)
-            }
-            item.setOnClickFillInIntent(R.id.sw_page, Intent())
-            items.addItem(index.toLong(), item)
+        return if (values.size >= 2) {
+            val rv = RemoteViews(context.packageName, if (horizontal) R.layout.sw_page_2h else R.layout.sw_page_2v)
+            val tileW = if (horizontal) (pageW - 6f) / 2 else pageW
+            val tileH = if (horizontal) pageH else (pageH - 6f) / 2
+            bindTile(context, rv, SLOT_A, values[0], tileW, tileH, detailed)
+            bindTile(context, rv, SLOT_B, values[1], tileW, tileH, detailed)
+            rv
+        } else {
+            val rv = RemoteViews(context.packageName, R.layout.sw_page_1)
+            bindTile(context, rv, SLOT_A, values[0], pageW, pageH, detailed)
+            rv
         }
-        root.setRemoteAdapter(R.id.sw_stack, items.build())
-        root.setEmptyView(R.id.sw_stack, R.id.sw_empty)
-
-        val template = PendingIntent.getActivity(
-            context,
-            0,
-            Intent(context, OpenFromWidgetActivity::class.java),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
-        )
-        root.setPendingIntentTemplate(R.id.sw_stack, template)
-        return root
     }
 
-    private fun bindTile(rv: RemoteViews, ids: SlotIds, v: MetricValue, tileW: Float, tileH: Float, detailed: Boolean) {
+    // --- Farben: ab Android 12 als Ressource (passt sich Hell/Dunkel und Material You an) ---
+
+    private fun RemoteViews.tintBackground(context: Context, id: Int, @ColorRes res: Int) {
+        if (Build.VERSION.SDK_INT >= 31) setColorStateList(id, "setBackgroundTintList", res)
+        else setInt(id, "setBackgroundColor", context.getColor(res))
+    }
+
+    private fun RemoteViews.tintImage(context: Context, id: Int, @ColorRes res: Int) {
+        if (Build.VERSION.SDK_INT >= 31) setColorStateList(id, "setImageTintList", res)
+        else setInt(id, "setColorFilter", context.getColor(res))
+    }
+
+    private fun RemoteViews.textColor(context: Context, id: Int, @ColorRes res: Int) {
+        if (Build.VERSION.SDK_INT >= 31) setColorStateList(id, "setTextColor", res)
+        else setTextColor(id, context.getColor(res))
+    }
+
+    private fun RemoteViews.sizeDp(id: Int, size: Float) {
+        if (Build.VERSION.SDK_INT >= 31) {
+            setViewLayoutWidth(id, size, TypedValue.COMPLEX_UNIT_DIP)
+            setViewLayoutHeight(id, size, TypedValue.COMPLEX_UNIT_DIP)
+        }
+    }
+
+    private fun bindTile(
+        context: Context,
+        rv: RemoteViews,
+        ids: SlotIds,
+        v: MetricValue,
+        tileW: Float,
+        tileH: Float,
+        detailed: Boolean,
+    ) {
         val c = colorsFor(v)
-        rv.setColorStateList(ids.tile, "setBackgroundTintList", c.container)
+        rv.tintBackground(context, ids.tile, c.container)
 
         val innerW = tileW - 16f
         val innerH = tileH - 16f
@@ -105,11 +103,10 @@ object SwipeViews {
         val ringSpace = minOf(innerW, innerH - if (showSub) 18f else 0f)
         val hasRing = v.available && v.progress != null && ringSpace >= 70f
 
-        // Untertitel
         if (showSub) {
             rv.setViewVisibility(ids.sub, View.VISIBLE)
             rv.setTextViewText(ids.sub, v.subtitle)
-            rv.setColorStateList(ids.sub, "setTextColor", c.on)
+            rv.textColor(context, ids.sub, c.on)
         } else {
             rv.setViewVisibility(ids.sub, View.GONE)
         }
@@ -119,33 +116,30 @@ object SwipeViews {
             rv.setViewVisibility(ids.ring, View.VISIBLE)
             rv.setViewVisibility(ids.icon, View.GONE)
             rv.setViewVisibility(ids.value, View.GONE)
-            rv.setViewLayoutWidth(ids.ring, ring, TypedValue.COMPLEX_UNIT_DIP)
-            rv.setViewLayoutHeight(ids.ring, ring, TypedValue.COMPLEX_UNIT_DIP)
+            rv.sizeDp(ids.ring, ring)
 
-            rv.setColorStateList(ids.track, "setImageTintList", c.on)
+            rv.tintImage(context, ids.track, c.on)
             val progressRes = RingDrawables.forProgress(v.progress ?: 0f)
             if (progressRes != null) {
                 rv.setViewVisibility(ids.prog, View.VISIBLE)
                 rv.setImageViewResource(ids.prog, progressRes)
-                rv.setColorStateList(ids.prog, "setImageTintList", c.accent)
+                rv.tintImage(context, ids.prog, c.accent)
             } else {
                 rv.setViewVisibility(ids.prog, View.INVISIBLE)
             }
 
-            val iconSize = (ring * 0.18f).coerceIn(12f, 24f)
             rv.setImageViewResource(ids.ringIcon, v.type.icon)
-            rv.setColorStateList(ids.ringIcon, "setImageTintList", c.accent)
-            rv.setViewLayoutWidth(ids.ringIcon, iconSize, TypedValue.COMPLEX_UNIT_DIP)
-            rv.setViewLayoutHeight(ids.ringIcon, iconSize, TypedValue.COMPLEX_UNIT_DIP)
+            rv.tintImage(context, ids.ringIcon, c.accent)
+            rv.sizeDp(ids.ringIcon, (ring * 0.18f).coerceIn(12f, 24f))
 
             rv.setTextViewText(ids.ringValue, v.compact)
             rv.setTextViewTextSize(ids.ringValue, TypedValue.COMPLEX_UNIT_SP, (ring * 0.24f).coerceIn(14f, 34f))
-            rv.setColorStateList(ids.ringValue, "setTextColor", c.on)
+            rv.textColor(context, ids.ringValue, c.on)
 
             if (v.unit.isNotEmpty() && ring >= 100f) {
                 rv.setViewVisibility(ids.ringUnit, View.VISIBLE)
                 rv.setTextViewText(ids.ringUnit, v.unit)
-                rv.setColorStateList(ids.ringUnit, "setTextColor", c.on)
+                rv.textColor(context, ids.ringUnit, c.on)
             } else {
                 rv.setViewVisibility(ids.ringUnit, View.GONE)
             }
@@ -155,17 +149,15 @@ object SwipeViews {
             rv.setViewVisibility(ids.icon, View.VISIBLE)
             rv.setViewVisibility(ids.value, View.VISIBLE)
 
-            val iconSize = (minDim * 0.30f).coerceIn(18f, 34f)
             rv.setImageViewResource(ids.icon, v.type.icon)
-            rv.setColorStateList(ids.icon, "setImageTintList", c.accent)
-            rv.setViewLayoutWidth(ids.icon, iconSize, TypedValue.COMPLEX_UNIT_DIP)
-            rv.setViewLayoutHeight(ids.icon, iconSize, TypedValue.COMPLEX_UNIT_DIP)
+            rv.tintImage(context, ids.icon, c.accent)
+            rv.sizeDp(ids.icon, (minDim * 0.30f).coerceIn(18f, 34f))
 
             val text = if (!v.isText && v.available && v.unit.isNotEmpty() && v.unit.length <= 4) "${v.compact} ${v.unit}" else v.compact
             val size = if (v.isText || !v.available) (innerW * 0.14f).coerceIn(12f, 20f) else (minDim * 0.30f).coerceIn(16f, 32f)
             rv.setTextViewText(ids.value, text)
             rv.setTextViewTextSize(ids.value, TypedValue.COMPLEX_UNIT_SP, size)
-            rv.setColorStateList(ids.value, "setTextColor", c.on)
+            rv.textColor(context, ids.value, c.on)
         }
     }
 }

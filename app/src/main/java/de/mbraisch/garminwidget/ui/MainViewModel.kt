@@ -1,7 +1,6 @@
 package de.mbraisch.garminwidget.ui
 
 import android.app.Application
-import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import de.mbraisch.garminwidget.auth.AuthExpiredException
@@ -10,7 +9,7 @@ import de.mbraisch.garminwidget.data.GarminRepository
 import de.mbraisch.garminwidget.data.Snapshot
 import de.mbraisch.garminwidget.data.WidgetSettings
 import de.mbraisch.garminwidget.sync.SyncScheduler
-import de.mbraisch.garminwidget.widget.GarminWidget
+import de.mbraisch.garminwidget.widget.WidgetUpdater
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -77,7 +76,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             } catch (e: IOException) {
                 _message.value = "Aktualisierung fehlgeschlagen: ${e.message ?: "keine Verbindung"}"
             }
-            GarminWidget().updateAll(getApplication())
+            WidgetUpdater.updateAll(getApplication())
         }
     }
 
@@ -89,7 +88,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 repo.completeLogin(ticket)
                 SyncScheduler.schedulePeriodic(getApplication(), settings.value.intervalMinutes, replace = true)
-                GarminWidget().updateAll(getApplication())
+                WidgetUpdater.updateAll(getApplication())
                 _loginState.value = LoginState.Idle
                 _message.value = "Mit Garmin Connect verbunden"
                 onDone()
@@ -113,7 +112,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             repo.logout()
             SyncScheduler.cancelAll(getApplication())
-            GarminWidget().updateAll(getApplication())
+            WidgetUpdater.updateAll(getApplication())
         }
     }
 
@@ -133,7 +132,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 pendingWrites--
                 if (pendingWrites == 0) _settings.value = store.currentSettings()
             }
-            GarminWidget().updateAll(getApplication())
+            WidgetUpdater.updateAll(getApplication())
         }
     }
 

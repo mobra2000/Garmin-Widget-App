@@ -1,7 +1,6 @@
 package de.mbraisch.garminwidget.sync
 
 import android.content.Context
-import androidx.glance.appwidget.updateAll
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -13,7 +12,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import de.mbraisch.garminwidget.auth.AuthExpiredException
 import de.mbraisch.garminwidget.data.GarminRepository
-import de.mbraisch.garminwidget.widget.GarminWidget
+import de.mbraisch.garminwidget.widget.WidgetUpdater
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
@@ -31,7 +30,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         } catch (e: IOException) {
             if (runAttemptCount < 2) Result.retry() else Result.failure()
         } finally {
-            GarminWidget().updateAll(applicationContext)
+            WidgetUpdater.updateAll(applicationContext)
         }
     }
 }
