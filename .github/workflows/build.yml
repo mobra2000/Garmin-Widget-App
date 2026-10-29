@@ -10,16 +10,30 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # Ubuntu 24.04 bringt das Android-SDK bereits mit
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
 
-      - uses: android-actions/setup-android@v3
+      - name: Android-SDK prüfen
+        id: sdk
+        run: |
+          if [ -n "$ANDROID_HOME" ] && [ -d "$ANDROID_HOME" ]; then
+            echo "Android-SDK vorhanden: $ANDROID_HOME"
+            echo "present=true" >> "$GITHUB_OUTPUT"
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Android-SDK installieren (falls nicht vorhanden)
+        if: steps.sdk.outputs.present != 'true'
+        uses: android-actions/setup-android@v3
 
       - uses: gradle/actions/setup-gradle@v4
 
