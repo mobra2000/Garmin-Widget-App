@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 jobs:
   build:
@@ -40,7 +41,8 @@ jobs:
       - name: APK bauen
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --stacktrace
+          set -o pipefail
+          ./gradlew assembleRelease --stacktrace 2>&1 | tee build.log
 
       - name: APK umbenennen
         run: cp app/build/outputs/apk/release/app-release.apk GarminWidget.apk
@@ -60,3 +62,25 @@ jobs:
             --title "Garmin Widget (neuester Build)" \
             --notes "Automatisch gebaut aus ${GITHUB_SHA::7}. Auf dem Handy herunterladen und installieren." \
             --prerelease
+
+      - name: Fehlerbericht als Issue speichern (nur bei Fehlern)
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          touch build.log
+          {
+            echo "Build ${GITHUB_SHA::7} fehlgeschlagen."
+            echo '```'
+            grep -n -E '^e: |error:|What went wrong|FAILED|Exception|Could not' build.log | head -80
+            echo '--- Ende des Logs ---'
+            tail -60 build.log
+            echo '```'
+          } > report.md
+          num=$(gh issue list --label build-log --state open --json number --jq '.[0].number' 2>/dev/null || true)
+          if [ -z "$num" ]; then
+            gh label create build-log --color B60205 2>/dev/null || true
+            gh issue create --title "Build-Log" --label build-log --body-file report.md
+          else
+            gh issue comment "$num" --body-file report.md
+          fi
