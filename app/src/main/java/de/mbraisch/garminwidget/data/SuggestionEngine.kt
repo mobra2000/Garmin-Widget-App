@@ -38,6 +38,7 @@ object SuggestionEngine {
                 type = type,
                 available = true,
                 value = title,
+                short = if (input.plannedIsRun) "Geplant" else title,
                 subtitle = if (input.plannedIsRun) "Geplant im Garmin-Kalender" else "Geplant (kein Lauf)",
                 detail = "Dieses Workout steht heute in deinem Garmin-Connect-Kalender.",
                 tone = Tone.NEUTRAL,
@@ -114,6 +115,7 @@ object SuggestionEngine {
             type = type,
             available = true,
             value = title,
+            short = SHORT_TITLES[title] ?: title,
             subtitle = subtitle,
             detail = detail,
             tone = when {
@@ -124,6 +126,16 @@ object SuggestionEngine {
             isText = true,
         )
     }
+
+    /** Kurzformen fürs Widget */
+    private val SHORT_TITLES = mapOf(
+        "Grundlage + Steigerungen" to "Grundlage",
+        "Grundlagenlauf" to "Grundlage",
+        "Grundlage lang" to "Lang & locker",
+        "Lockerer Lauf" to "Locker",
+        "Langer Lauf" to "Lang",
+        "Tempolauf" to "Tempo",
+    )
 
     fun statusLabel(status: String?): String = when (status) {
         "PRODUCTIVE" -> "Produktiv"

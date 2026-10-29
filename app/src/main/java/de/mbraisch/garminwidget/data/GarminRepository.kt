@@ -139,6 +139,81 @@ class GarminRepository(context: Context) {
         Snapshot(fetchedAt = System.currentTimeMillis(), metrics = metrics, error = error)
     }
 
+    /**
+     * Diagnose: holt die Rohantworten der wichtigsten Endpunkte (gekürzt) als Text,
+     * damit fehlende Werte gezielt gefunden werden können. Ganz oben steht eine
+     * Liste aller Felder, deren Name "recover" oder "hrv" enthält.
+     */
+    suspend fun diagnostics(): String {
+        val today = LocalDate.now().toString()
+        val displayName = store.currentDisplayName().orEmpty()
+        val sources = linkedMapOf<String, suspend () -> Any?>(
+            "trainingreadiness" to suspend { client.get("/metrics-service/metrics/trainingreadiness/$today") },
+            "trainingstatus" to suspend { client.get("/metrics-service/metrics/trainingstatus/aggregated/$today") },
+            "hrv" to suspend { client.get("/hrv-service/hrv/$today") },
+            "sleep" to suspend { client.get("/wellness-service/wellness/dailySleepData/$displayName", mapOf("date" to today, "nonSleepBufferMinutes" to "60")) },
+            "usersummary" to suspend { client.get("/usersummary-service/usersummary/daily/$displayName", mapOf("calendarDate" to today)) },
+            "activities" to suspend { client.get("/activitylist-service/activities/search/activities", mapOf("start" to "0", "limit" to "2")) },
+        )
+        val results = linkedMapOf<String, Any?>()
+        for ((name, call) in sources) {
+            results[name] = try {
+                call() ?: "(keine Daten)"
+            } catch (e: Exception) {
+                "(Fehler: ${e.message})"
+            }
+        }
+        // Details der letzten Aktivität (dort steht bei manchen Uhren die Erholungszeit)
+        val lastActivityId = (results["activities"] as? JSONArray)?.optJSONObject(0)?.num("activityId")?.toLong()
+        if (lastActivityId != null) {
+            results["activity_detail"] = try {
+                client.get("/activity-service/activity/$lastActivityId") ?: "(keine Daten)"
+            } catch (e: Exception) {
+                "(Fehler: ${e.message})"
+            }
+        }
+
+        val hits = mutableListOf<String>()
+        results.forEach { (name, data) -> collectHits(name, data, hits) }
+
+        return buildString {
+            append("Garmin-Widget Diagnose ").append(today).append('\n')
+            append("== Gefundene Felder (recover/hrv) ==\n")
+            if (hits.isEmpty()) append("(keine)\n") else hits.take(80).forEach { append(it).append('\n') }
+            results.forEach { (name, data) ->
+                append("\n== ").append(name).append(" ==\n")
+                append(trim(data, 0).toString().take(6000)).append('\n')
+            }
+        }
+    }
+
+    private fun collectHits(path: String, data: Any?, out: MutableList<String>) {
+        when (data) {
+            is JSONObject -> data.keys().forEach { k ->
+                val v = data.opt(k)
+                val lower = k.lowercase()
+                if ((lower.contains("recover") || lower.contains("hrv")) && v !is JSONObject && v !is JSONArray) {
+                    out += "$path.$k = $v"
+                }
+                collectHits("$path.$k", v, out)
+            }
+            is JSONArray -> for (i in 0 until minOf(data.length(), 5)) collectHits("$path[$i]", data.opt(i), out)
+        }
+    }
+
+    /** Kürzt lange Listen, damit der Text überschaubar bleibt. */
+    private fun trim(data: Any?, depth: Int): Any? = when {
+        depth > 6 -> "…"
+        data is JSONObject -> JSONObject().also { o ->
+            data.keys().forEach { k -> o.put(k, trim(data.opt(k), depth + 1)) }
+        }
+        data is JSONArray -> JSONArray().also { a ->
+            for (i in 0 until minOf(data.length(), 3)) a.put(trim(data.opt(i), depth + 1))
+            if (data.length() > 3) a.put("… (${data.length()} Einträge)")
+        }
+        else -> data
+    }
+
     private suspend fun <T> fetch(block: suspend () -> T?): Fetch<T> = try {
         Fetch.Ok(block())
     } catch (e: IOException) {
@@ -448,7 +523,12 @@ private class ParsedData(
 
     fun hrv(): MetricValue {
         val type = MetricType.HRV
-        val lastNight = hrvSummary?.num("lastNightAvg")
+        // Nächtliche HFV: zuerst der HFV-Status (neuere Uhren), sonst die Schlafdaten –
+        // dort steht sie auch bei älteren Uhren wie der Fenix 6.
+        val fromStatus = hrvSummary?.num("lastNightAvg")
+        val lastNight = fromStatus
+            ?: sleepDto?.num("avgOvernightHrv")
+            ?: sleep.data()?.num("avgOvernightHrv")
             ?: sleepDto?.num("avgSleepHRV")
             ?: return MetricValue.unavailable(type, reason(hrv))
         val weekly = hrvSummary?.num("weeklyAvg")
@@ -460,7 +540,7 @@ private class ParsedData(
             "UNBALANCED" -> "Unausgeglichen" to Tone.WARN
             "LOW" -> "Niedrig" to Tone.BAD
             "POOR" -> "Schlecht" to Tone.BAD
-            "NONE", null -> "Wird ermittelt" to Tone.NEUTRAL
+            "NONE", null -> (if (fromStatus == null) "Letzte Nacht" else "Wird ermittelt") to Tone.NEUTRAL
             else -> (hrvStatusKey ?: "") to Tone.NEUTRAL
         }
         return MetricValue(

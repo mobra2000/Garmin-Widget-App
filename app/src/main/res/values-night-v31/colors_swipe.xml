@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Farben der Wisch-Ansicht (Kartenstapel) im Widget -->
+<resources>
+    <color name="sw_bg">@android:color/system_neutral1_900</color>
+    <color name="sw_p_container">@android:color/system_accent1_700</color>
+    <color name="sw_p_on">@android:color/system_accent1_100</color>
+    <color name="sw_p_accent">@android:color/system_accent1_200</color>
+    <color name="sw_s_container">@android:color/system_accent2_700</color>
+    <color name="sw_s_on">@android:color/system_accent2_100</color>
+    <color name="sw_s_accent">@android:color/system_accent2_200</color>
+    <color name="sw_t_container">@android:color/system_accent3_700</color>
+    <color name="sw_t_on">@android:color/system_accent3_100</color>
+    <color name="sw_t_accent">@android:color/system_accent3_200</color>
+    <color name="sw_n_container">@android:color/system_neutral2_700</color>
+    <color name="sw_n_on">@android:color/system_neutral2_100</color>
+    <color name="sw_n_accent">@android:color/system_neutral2_200</color>
+    <color name="sw_e_container">#FF93000A</color>
+    <color name="sw_e_on">#FFFFDAD6</color>
+    <color name="sw_e_accent">#FFFFB4AB</color>
+</resources>

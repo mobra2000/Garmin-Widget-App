@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Wischmodus: Kartenstapel, der pro Wischbewegung eine Seite weiterspringt -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/background"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/sw_root_bg"
+    android:backgroundTint="@color/sw_bg"
+    android:padding="6dp">
+
+    <StackView
+        android:id="@+id/sw_stack"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:loopViews="true" />
+
+    <TextView
+        android:id="@+id/sw_empty"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:text="–"
+        android:textColor="@color/sw_n_on" />
+</FrameLayout>

@@ -151,9 +151,29 @@ fun AccountScreen(vm: MainViewModel, onLogin: () -> Unit, modifier: Modifier = M
             }
         }
 
+        if (loggedIn) {
+            item {
+                Card(
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = scheme.surfaceContainerLow),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Fehlersuche", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "Kopiert die Rohdaten von Garmin (gekürzt) in die Zwischenablage, z. B. um herauszufinden, warum ein Wert fehlt. Enthält deine Gesundheits- und Trainingsdaten.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = scheme.onSurfaceVariant,
+                        )
+                        OutlinedButton(onClick = vm::copyDiagnostics) { Text("Rohdaten kopieren") }
+                    }
+                }
+            }
+        }
+
         item {
             Text(
-                "Garmin Widget 1.0 · Symbole: Material Symbols (Apache 2.0)",
+                "Garmin Widget 1.1 · Symbole: Material Symbols (Apache 2.0)",
                 style = MaterialTheme.typography.labelSmall,
                 color = scheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 8.dp),

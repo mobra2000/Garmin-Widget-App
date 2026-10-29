@@ -30,8 +30,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = GarminRepository(app)
     private val store = repo.store
 
-    val settings: StateFlow<WidgetSettings> =
-        store.settings.stateIn(viewModelScope, SharingStarted.Eagerly, WidgetSettings())
+    /**
+     * Einstellungen werden sofort (optimistisch) übernommen, damit Schalter flüssig
+     * animieren; das Speichern läuft im Hintergrund hinterher.
+     */
+    private val _settings = MutableStateFlow(WidgetSettings())
+    val settings: StateFlow<WidgetSettings> = _settings.asStateFlow()
+    private var pendingWrites = 0
+
+    init {
+        viewModelScope.launch {
+            store.settings.collect { stored ->
+                if (pendingWrites == 0) _settings.value = stored
+            }
+        }
+    }
     val snapshot: StateFlow<Snapshot> =
         store.snapshot.stateIn(viewModelScope, SharingStarted.Eagerly, Snapshot.EMPTY)
     val loggedIn: StateFlow<Boolean> =
@@ -105,13 +118,38 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun updateSettings(transform: (WidgetSettings) -> WidgetSettings) {
+        val before = _settings.value
+        val optimistic = transform(before)
+        if (optimistic == before) return
+        _settings.value = optimistic
+        pendingWrites++
         viewModelScope.launch {
-            val (old, new) = store.updateSettings(transform)
-            if (new == old) return@launch
-            if (new.intervalMinutes != old.intervalMinutes && loggedIn.value) {
-                SyncScheduler.schedulePeriodic(getApplication(), new.intervalMinutes, replace = true)
+            try {
+                val (old, new) = store.updateSettings(transform)
+                if (new.intervalMinutes != old.intervalMinutes && loggedIn.value) {
+                    SyncScheduler.schedulePeriodic(getApplication(), new.intervalMinutes, replace = true)
+                }
+            } finally {
+                pendingWrites--
+                if (pendingWrites == 0) _settings.value = store.currentSettings()
             }
             GarminWidget().updateAll(getApplication())
+        }
+    }
+
+    /** Rohdaten für die Fehlersuche abrufen und in die Zwischenablage kopieren. */
+    fun copyDiagnostics() {
+        viewModelScope.launch {
+            _message.value = "Rohdaten werden geladen…"
+            try {
+                val text = repo.diagnostics()
+                val clipboard = getApplication<Application>()
+                    .getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Garmin-Widget Diagnose", text))
+                _message.value = "Rohdaten kopiert – jetzt im Chat einfügen"
+            } catch (e: Exception) {
+                _message.value = "Diagnose fehlgeschlagen: ${e.message}"
+            }
         }
     }
 }

@@ -26,21 +26,21 @@ Ordner öffnen → warten bis Gradle fertig ist → Handy per USB anschließen �
 2. Startbildschirm lange drücken → Widgets → *Garmin Widget* → Größe frei ziehen (1×1 bis 4×4).
 3. Im Reiter **Widget**: Kacheln auswählen/sortieren und Modus wählen
    - **Mehrere Werte**: 1×1 → 1, 2×1/1×2 → 2, 3×1 → 3, ab 2×2 bzw. 4×1 → 4 Werte; große Widgets mit Ringanzeigen und Details
-   - **Wischen**: 1 oder 2 Werte pro Seite, die übrigen per Wischen nach oben/unten
+   - **Wischen**: 1 oder 2 Werte pro Seite; ein Wisch nach oben/unten blättert wie ein Kartenstapel genau eine Seite weiter (ab Android 12)
+4. Tippen aufs Widget öffnet Garmin Connect (umstellbar auf diese App).
 
 ## Gut zu wissen
 
 - Die App nutzt dieselbe (inoffizielle) Schnittstelle wie die Garmin-Connect-App. Ändert Garmin
   etwas, können einzelne Werte vorübergehend fehlen. Gespeichert wird nur ein verschlüsseltes
   Zugriffstoken, nie das Passwort.
-- Welche Werte es gibt, hängt von der Uhr ab. Ältere Modelle (z. B. Fenix 6) liefern keinen
-  HFV-Status und keine Trainingsbereitschaft – dann zeigt die Kachel „Für dein Gerät nicht
-  verfügbar“. Die Erholungsdauer stammt aus der Trainingsbereitschaft.
+- Welche Werte es gibt, hängt von der Uhr ab. Die nächtliche HFV kommt bei Uhren ohne HFV-Status
+  (z. B. Fenix 6) aus den Schlafdaten. Fehlt ein Wert, hilft *Konto → Rohdaten kopieren* bei der Suche.
 - **Trainingsvorschlag:** Garmin stellt den Vorschlag der Uhr nicht über Connect bereit. Steht für
   heute ein Lauf im Garmin-Kalender (z. B. Garmin Coach), wird dieser gezeigt; sonst berechnet die
   App einen Vorschlag aus Erholung, Body Battery, Schlaf, HFV, Belastung und Belastungsfokus.
-- Android-Widgets können nicht seitenweise einrasten: Im Wischmodus scrollt das Widget, jede
-  Seite ist aber genau so hoch wie das Widget.
+- Die Wisch-Animation und eine Vibration kann ein Widget nicht selbst steuern – das übernimmt der
+  Launcher; das Einrasten kommt vom Android-Kartenstapel.
 
 ## Aufbau
 

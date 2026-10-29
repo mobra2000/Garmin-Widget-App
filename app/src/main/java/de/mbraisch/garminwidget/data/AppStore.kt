@@ -19,8 +19,10 @@ enum class DisplayMode { GRID, SWIPE }
 
 /** Alle Einstellungen, die die App und das Widget betreffen. */
 data class WidgetSettings(
-    /** Aktive Kacheln in der gewählten Reihenfolge. */
-    val tiles: List<MetricType> = MetricType.DEFAULT_ORDER,
+    /** Reihenfolge aller Kacheln (auch der ausgeschalteten). */
+    val order: List<MetricType> = MetricType.DEFAULT_ORDER,
+    /** Eingeschaltete Kacheln. */
+    val enabled: Set<MetricType> = MetricType.DEFAULT_ORDER.toSet(),
     val mode: DisplayMode = DisplayMode.GRID,
     /** Werte pro Seite im Wischmodus (1 oder 2). */
     val perPage: Int = 1,
@@ -28,17 +30,22 @@ data class WidgetSettings(
     val intervalMinutes: Int = 60,
     /** App: true = Systemfarben (Material You), false = feste Garmin-Farben. */
     val dynamicColor: Boolean = true,
+    /** Tippen aufs Widget: true = Garmin-Connect-App öffnen, false = diese App. */
+    val tapOpensGarmin: Boolean = true,
 ) {
-    /** Alle Kacheln: erst die aktiven in ihrer Reihenfolge, dann die inaktiven. */
-    val allInOrder: List<MetricType>
-        get() = tiles + MetricType.entries.filter { it !in tiles }
+    /** Aktive Kacheln in der gewählten Reihenfolge – das zeigt das Widget. */
+    val tiles: List<MetricType>
+        get() = order.filter { it in enabled }
 }
 
 /** Zentraler Speicher für Einstellungen, letzte Daten und Anmeldestatus. */
 class AppStore(private val context: Context) {
 
     private object Keys {
-        val TILES = stringPreferencesKey("tiles")
+        val TILES = stringPreferencesKey("tiles") // alte Version (nur aktive Kacheln)
+        val ORDER = stringPreferencesKey("order")
+        val ENABLED = stringPreferencesKey("enabled")
+        val TAP_GARMIN = booleanPreferencesKey("tap_opens_garmin")
         val MODE = stringPreferencesKey("mode")
         val PER_PAGE = intPreferencesKey("per_page")
         val INTERVAL = intPreferencesKey("interval")
@@ -52,16 +59,20 @@ class AppStore(private val context: Context) {
     val settings: Flow<WidgetSettings> = context.store.data.map { parseSettings(it) }.distinctUntilChanged()
 
     private fun parseSettings(p: Preferences): WidgetSettings {
-        val tiles = p[Keys.TILES]
-            ?.split(',')
-            ?.mapNotNull { MetricType.fromId(it) }
-            ?: MetricType.DEFAULT_ORDER
+        fun parseList(v: String?): List<MetricType>? = v?.split(',')?.mapNotNull { MetricType.fromId(it) }
+        val legacyTiles = parseList(p[Keys.TILES])
+        val storedOrder = parseList(p[Keys.ORDER]) ?: legacyTiles ?: MetricType.DEFAULT_ORDER
+        // Neue oder fehlende Kacheln hinten anhängen, Duplikate entfernen
+        val order = (storedOrder + MetricType.entries).distinct()
+        val enabled = (parseList(p[Keys.ENABLED]) ?: legacyTiles ?: MetricType.DEFAULT_ORDER).toSet()
         return WidgetSettings(
-            tiles = tiles,
+            order = order,
+            enabled = enabled,
             mode = runCatching { DisplayMode.valueOf(p[Keys.MODE] ?: "") }.getOrDefault(DisplayMode.GRID),
             perPage = (p[Keys.PER_PAGE] ?: 1).coerceIn(1, 2),
             intervalMinutes = p[Keys.INTERVAL] ?: 60,
             dynamicColor = p[Keys.DYNAMIC] ?: true,
+            tapOpensGarmin = p[Keys.TAP_GARMIN] ?: true,
         )
     }
 
@@ -88,7 +99,10 @@ class AppStore(private val context: Context) {
         context.store.edit { p ->
             val old = parseSettings(p)
             val s = transform(old)
-            p[Keys.TILES] = s.tiles.joinToString(",") { it.id }
+            p[Keys.ORDER] = s.order.joinToString(",") { it.id }
+            p[Keys.ENABLED] = s.enabled.joinToString(",") { it.id }
+            p.remove(Keys.TILES)
+            p[Keys.TAP_GARMIN] = s.tapOpensGarmin
             p[Keys.MODE] = s.mode.name
             p[Keys.PER_PAGE] = s.perPage
             p[Keys.INTERVAL] = s.intervalMinutes

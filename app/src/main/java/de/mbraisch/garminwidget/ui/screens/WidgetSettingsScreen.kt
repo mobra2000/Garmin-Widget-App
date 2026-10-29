@@ -103,9 +103,9 @@ fun WidgetSettingsScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
                 Spacer(Modifier.height(10.dp))
                 Text(
                     if (settings.mode == DisplayMode.GRID)
-                        "Je nach Größe zeigt das Widget die ersten aktiven Kacheln gleichzeitig: 1×1 → 1 Wert, 2×1 und 1×2 → 2 Werte, 3×1 → 3 Werte, ab 2×2 und 4×1 → 4 Werte. Größere Widgets zeigen mehr Details."
+                        "Je nach Größe zeigt das Widget die ersten Kacheln gleichzeitig: 1×1 → 1 Wert, 2×1 und 1×2 → 2, 3×1 → 3, ab 2×2 → 4 Werte. Erst große Widgets (ab 3×4) zeigen kleine Zusatzinfos."
                     else
-                        "Das Widget zeigt 1 oder 2 Werte; die übrigen aktiven Kacheln erreichst du durch Wischen nach oben und unten im Widget.",
+                        "Das Widget zeigt 1 oder 2 Werte. Ein Wisch nach oben oder unten blättert wie bei einem Kartenstapel zur nächsten Seite.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -126,19 +126,36 @@ fun WidgetSettingsScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
             }
         }
 
+        // ---------------- Tippen ----------------
+        item {
+            SettingsCard {
+                Text("Tippen auf das Widget öffnet", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(12.dp))
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    listOf(true to "Garmin Connect", false to "Diese App").forEachIndexed { index, (garmin, label) ->
+                        SegmentedButton(
+                            selected = settings.tapOpensGarmin == garmin,
+                            onClick = { vm.updateSettings { it.copy(tapOpensGarmin = garmin) } },
+                            shape = SegmentedButtonDefaults.itemShape(index = index, count = 2),
+                        ) { Text(label) }
+                    }
+                }
+            }
+        }
+
         // ---------------- Kacheln ----------------
         item {
             Column(modifier = Modifier.padding(top = 8.dp)) {
                 Text("Kacheln", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(
-                    "Aktivieren und mit den Pfeilen sortieren. Oben stehende Kacheln erscheinen im Widget zuerst.",
+                    "Einschalten und mit den Pfeilen sortieren. Oben stehende Kacheln erscheinen im Widget zuerst.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
-        items(settings.allInOrder, key = { it.id }) { type ->
-            TileRow(type, settings, vm)
+        items(settings.order, key = { it.id }) { type ->
+            TileRow(type, settings, vm, Modifier.animateItem())
         }
 
         // ---------------- Aktualisierung ----------------
@@ -157,7 +174,7 @@ fun WidgetSettingsScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "So oft holt die App im Hintergrund neue Werte. Über den Pfeil im Widget (ab 3×3) oder in der App geht es jederzeit sofort.",
+                    "So oft holt die App im Hintergrund neue Werte. Sofort aktualisieren: in der App nach unten ziehen oder beim großen Widget (4×4) auf den Pfeil tippen.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -167,16 +184,17 @@ fun WidgetSettingsScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun TileRow(type: MetricType, settings: WidgetSettings, vm: MainViewModel) {
-    val active = type in settings.tiles
-    val index = settings.tiles.indexOf(type)
+private fun TileRow(type: MetricType, settings: WidgetSettings, vm: MainViewModel, modifier: Modifier = Modifier) {
+    val active = type in settings.enabled
+    val index = settings.order.indexOf(type)
+    val position = settings.tiles.indexOf(type)
     val scheme = MaterialTheme.colorScheme
     Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (active) scheme.surfaceContainerHigh else scheme.surfaceContainerLow,
         ),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -193,27 +211,25 @@ private fun TileRow(type: MetricType, settings: WidgetSettings, vm: MainViewMode
                 Text(type.label, style = MaterialTheme.typography.titleSmall)
                 if (active) {
                     Text(
-                        "Position ${index + 1}",
+                        "Position ${position + 1}",
                         style = MaterialTheme.typography.bodySmall,
                         color = scheme.onSurfaceVariant,
                     )
                 }
             }
-            if (active) {
-                IconButton(
-                    onClick = { vm.updateSettings { it.copy(tiles = it.tiles.move(type, -1)) } },
-                    enabled = index > 0,
-                ) { Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "Nach oben") }
-                IconButton(
-                    onClick = { vm.updateSettings { it.copy(tiles = it.tiles.move(type, +1)) } },
-                    enabled = index < settings.tiles.size - 1,
-                ) { Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Nach unten") }
-            }
+            IconButton(
+                onClick = { vm.updateSettings { it.copy(order = it.order.move(type, -1)) } },
+                enabled = index > 0,
+            ) { Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "Nach oben") }
+            IconButton(
+                onClick = { vm.updateSettings { it.copy(order = it.order.move(type, +1)) } },
+                enabled = index < settings.order.size - 1,
+            ) { Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Nach unten") }
             Switch(
                 checked = active,
                 onCheckedChange = { on ->
                     vm.updateSettings {
-                        it.copy(tiles = if (on) (it.tiles - type) + type else it.tiles - type)
+                        it.copy(enabled = if (on) it.enabled + type else it.enabled - type)
                     }
                 },
             )

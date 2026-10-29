@@ -54,7 +54,12 @@ data class MetricValue(
     val tone: Tone = Tone.NEUTRAL,
     /** true, wenn der Hauptwert ein Wort/Text ist (Status, Vorschlag) und keine Zahl. */
     val isText: Boolean = false,
+    /** Kurzform des Hauptwerts fürs Widget (z. B. "Tempo" statt "Tempolauf"). Leer = [value]. */
+    val short: String = "",
 ) {
+    /** Wert, wie ihn das Widget zeigt. */
+    val compact: String get() = short.ifEmpty { value }
+
     fun toJson(): JSONObject = JSONObject()
         .put("type", type.id)
         .put("available", available)
@@ -65,6 +70,7 @@ data class MetricValue(
         .put("progress", progress?.toDouble() ?: JSONObject.NULL)
         .put("tone", tone.name)
         .put("isText", isText)
+        .put("short", short)
 
     companion object {
         fun unavailable(type: MetricType, reason: String) = MetricValue(
@@ -86,6 +92,7 @@ data class MetricValue(
                 progress = if (o.isNull("progress")) null else o.optDouble("progress").toFloat(),
                 tone = runCatching { Tone.valueOf(o.optString("tone")) }.getOrDefault(Tone.NEUTRAL),
                 isText = o.optBoolean("isText"),
+                short = o.optString("short"),
             )
         }
     }
