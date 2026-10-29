@@ -3,6 +3,7 @@ package de.mbraisch.garminwidget.widget
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
 import de.mbraisch.garminwidget.R
@@ -33,10 +34,16 @@ private class SwipeFactory(private val context: Context, private val appWidgetId
         val h = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 150).toFloat()
         val layout = WidgetLayout(w, h)
         detailed = layout.detailed
-        // Der Kartenstapel macht jede Karte 90 % so groß wie das Widget (der Rest zeigt
-        // die Karten dahinter) und lässt rundherum 4 dp Rand.
-        pageW = w * 0.9f - 8f
-        pageH = h * 0.9f - 8f
+        // Ab Android 12 ist der Stapel so vergrößert, dass die vorderste Karte das ganze
+        // Widget füllt (siehe GarminWidgetReceiver.stack); rundherum bleiben 4 dp Rand.
+        // Davor: Karte = 90 % der Fläche, der Rest zeigt die Karten dahinter.
+        if (Build.VERSION.SDK_INT >= 31) {
+            pageW = w - 8f
+            pageH = h - 8f
+        } else {
+            pageW = w * 0.9f - 8f
+            pageH = h * 0.9f - 8f
+        }
 
         pages = if (!state.loggedIn || state.snapshot.fetchedAt == 0L) {
             emptyList()

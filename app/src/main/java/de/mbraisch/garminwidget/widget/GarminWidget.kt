@@ -7,7 +7,9 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.util.TypedValue
 import android.widget.RemoteViews
 import de.mbraisch.garminwidget.R
 import de.mbraisch.garminwidget.data.AppStore
@@ -70,7 +72,7 @@ class GarminWidgetReceiver : AppWidgetProvider() {
                 !state.loggedIn -> message(context, if (layout.isTiny) "Anmelden" else "In der App anmelden")
                 state.settings.tiles.isEmpty() -> message(context, "Kacheln wählen")
                 state.snapshot.fetchedAt == 0L -> message(context, "Lädt…")
-                state.settings.mode == DisplayMode.SWIPE -> stack(context, appWidgetId)
+                state.settings.mode == DisplayMode.SWIPE -> stack(context, appWidgetId, w, h)
                 else -> TileViews.grid(
                     context = context,
                     values = state.settings.tiles.take(layout.gridCount).map { state.snapshot[it] },
@@ -90,8 +92,16 @@ class GarminWidgetReceiver : AppWidgetProvider() {
         }
 
         /** Kartenstapel; die Karten liefert [SwipeWidgetService]. */
-        private fun stack(context: Context, appWidgetId: Int): RemoteViews {
+        private fun stack(context: Context, appWidgetId: Int, widthDp: Float, heightDp: Float): RemoteViews {
             val rv = RemoteViews(context.packageName, R.layout.widget_swipe)
+            if (Build.VERSION.SDK_INT >= 31) {
+                // Der Kartenstapel zeigt die vorderste Karte auf 90 % der Fläche und die Karten
+                // dahinter nach oben rechts versetzt. Wir machen den Stapel um diese 10 % größer
+                // als das Widget und schieben den Überstand nach oben/rechts aus dem sichtbaren
+                // Bereich – dann ist nur die vorderste Karte zu sehen, in voller Widget-Größe.
+                rv.setViewLayoutMargin(R.id.sw_stack, RemoteViews.MARGIN_TOP, -heightDp / 9f, TypedValue.COMPLEX_UNIT_DIP)
+                rv.setViewLayoutMargin(R.id.sw_stack, RemoteViews.MARGIN_RIGHT, -widthDp / 9f, TypedValue.COMPLEX_UNIT_DIP)
+            }
             val serviceIntent = Intent(context, SwipeWidgetService::class.java)
                 .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
             // Eindeutige Daten-URI, damit Android pro Widget eine eigene Kartenliste anlegt
