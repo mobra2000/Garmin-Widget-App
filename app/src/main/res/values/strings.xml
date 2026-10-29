@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Garmin Widget</string>
-    <string name="widget_name">Garmin Raster</string>
-    <string name="swipe_widget_name">Garmin Wischen</string>
-    <string name="swipe_widget_description">Ein Wert pro Seite – wischen blättert weiter</string>
-    <string name="widget_description">Trainingszustand, Schlaf, Body Battery und mehr – von 1×1 bis 4×4</string>
+    <string name="widget_name">Garmin Widget</string>
+    <string name="widget_description">Mehrere Werte oder Wischen – von 1×1 bis 4×4</string>
 </resources>

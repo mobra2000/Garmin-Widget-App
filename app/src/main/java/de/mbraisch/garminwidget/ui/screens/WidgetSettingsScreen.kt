@@ -41,11 +41,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.mbraisch.garminwidget.R
+import de.mbraisch.garminwidget.data.DisplayMode
 import de.mbraisch.garminwidget.data.MetricType
 import de.mbraisch.garminwidget.data.WidgetSettings
 import de.mbraisch.garminwidget.ui.MainViewModel
 import de.mbraisch.garminwidget.widget.GarminWidgetReceiver
-import de.mbraisch.garminwidget.widget.SwipeWidgetProvider
 
 private val INTERVALS = listOf(30 to "30 min", 60 to "1 h", 120 to "2 h", 240 to "4 h")
 
@@ -63,23 +63,51 @@ fun WidgetSettingsScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
         item {
             Text("Widget", style = MaterialTheme.typography.headlineLarge)
             Text(
-                "Es gibt zwei Widgets: eins für mehrere Werte gleichzeitig und eins zum Durchwischen. Die Kachel-Auswahl gilt für beide.",
+                "Gilt für alle Garmin-Widgets auf deinem Startbildschirm.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
-        // ---------------- Die zwei Widgets ----------------
+        // ---------------- Darstellung ----------------
         item {
             val manager = AppWidgetManager.getInstance(context)
             SettingsCard {
-                Text("Garmin Raster – mehrere Werte", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(6.dp))
+                Text("Darstellung", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(12.dp))
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    val modes = listOf(DisplayMode.GRID to "Mehrere Werte", DisplayMode.SWIPE to "Wischen")
+                    modes.forEachIndexed { index, (mode, label) ->
+                        SegmentedButton(
+                            selected = settings.mode == mode,
+                            onClick = { vm.updateSettings { it.copy(mode = mode) } },
+                            shape = SegmentedButtonDefaults.itemShape(index = index, count = modes.size),
+                        ) { Text(label) }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
                 Text(
-                    "1×1 → 1 Wert, 2×1 und 1×2 → 2, 3×1 → 3, ab 2×2 → 4 Werte gleichzeitig. Große Widgets (ab 3×4) zeigen kleine Zusatzinfos.",
+                    if (settings.mode == DisplayMode.GRID)
+                        "1×1 → 1 Wert, 2×1 und 1×2 → 2, 3×1 → 3, ab 2×2 → 4 Werte gleichzeitig. Große Widgets (ab 3×4) zeigen kleine Zusatzinfos."
+                    else
+                        "Kartenstapel: Jeder Wisch nach oben oder unten springt genau eine Karte weiter.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (settings.mode == DisplayMode.SWIPE) {
+                    Spacer(Modifier.height(12.dp))
+                    Text("Werte pro Karte", style = MaterialTheme.typography.labelLarge)
+                    Spacer(Modifier.height(6.dp))
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        listOf(1, 2).forEachIndexed { index, n ->
+                            SegmentedButton(
+                                selected = settings.perPage == n,
+                                onClick = { vm.updateSettings { it.copy(perPage = n) } },
+                                shape = SegmentedButtonDefaults.itemShape(index = index, count = 2),
+                            ) { Text(if (n == 1) "1 Wert" else "2 Werte") }
+                        }
+                    }
+                }
                 if (manager.isRequestPinAppWidgetSupported) {
                     Spacer(Modifier.height(12.dp))
                     FilledTonalButton(
@@ -89,44 +117,7 @@ fun WidgetSettingsScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
                     ) {
                         Icon(painterResource(R.drawable.ic_widgets), contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Hinzufügen")
-                    }
-                }
-            }
-        }
-
-        item {
-            val manager = AppWidgetManager.getInstance(context)
-            SettingsCard {
-                Text("Garmin Wischen – ein Wert pro Wisch", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    "Kartenstapel: Jeder Wisch nach oben oder unten springt genau eine Karte weiter. Dafür dieses Widget auf den Startbildschirm legen – das Raster-Widget kann nicht wischen.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(12.dp))
-                Text("Werte pro Seite", style = MaterialTheme.typography.labelLarge)
-                Spacer(Modifier.height(6.dp))
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                    listOf(1, 2).forEachIndexed { index, n ->
-                        SegmentedButton(
-                            selected = settings.perPage == n,
-                            onClick = { vm.updateSettings { it.copy(perPage = n) } },
-                            shape = SegmentedButtonDefaults.itemShape(index = index, count = 2),
-                        ) { Text(if (n == 1) "1 Wert" else "2 Werte") }
-                    }
-                }
-                if (manager.isRequestPinAppWidgetSupported) {
-                    Spacer(Modifier.height(12.dp))
-                    FilledTonalButton(
-                        onClick = {
-                            manager.requestPinAppWidget(ComponentName(context, SwipeWidgetProvider::class.java), null, null)
-                        },
-                    ) {
-                        Icon(painterResource(R.drawable.ic_widgets), contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Hinzufügen")
+                        Text("Widget hinzufügen")
                     }
                 }
             }

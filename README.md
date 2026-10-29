@@ -23,11 +23,11 @@ Ordner öffnen → warten bis Gradle fertig ist → Handy per USB anschließen �
 ## Erster Start
 
 1. App öffnen → **Bei Garmin anmelden** (die echte Garmin-Anmeldeseite, inkl. Zwei-Faktor-Code).
-2. Startbildschirm lange drücken → Widgets → *Garmin Widget*. Es gibt zwei Widgets (Größe frei ziehbar, 1×1 bis 4×4):
-   - **Garmin Raster**: 1×1 → 1, 2×1/1×2 → 2, 3×1 → 3, ab 2×2 → 4 Werte gleichzeitig; ab 3×4 mit kleinen Zusatzinfos
-   - **Garmin Wischen**: Kartenstapel mit 1 oder 2 Werten pro Seite; ein Wisch nach oben/unten blättert genau eine Seite weiter
-3. Im Reiter **Widget**: Kacheln auswählen und sortieren.
-4. Tippen aufs Widget öffnet Garmin Connect (umstellbar auf diese App).
+2. Startbildschirm lange drücken → Widgets → *Garmin Widget* → Größe frei ziehen (1×1 bis 4×4).
+3. Im Reiter **Widget** die Darstellung wählen:
+   - **Mehrere Werte**: 1×1 → 1, 2×1/1×2 → 2, 3×1 → 3, ab 2×2 → 4 Werte; ab 3×4 mit kleinen Zusatzinfos
+   - **Wischen**: Kartenstapel mit 1 oder 2 Werten pro Karte; jeder Wisch springt genau eine Karte weiter
+4. Kacheln auswählen und sortieren. Tippen aufs Widget öffnet Garmin Connect (umstellbar).
 
 ## Gut zu wissen
 
@@ -49,5 +49,5 @@ Ordner öffnen → warten bis Gradle fertig ist → Handy per USB anschließen �
 | `auth/` | Anmeldung (Ticket → Token), Token-Refresh, verschlüsselte Speicherung |
 | `data/` | Abruf und Aufbereitung der Werte, Trainingsvorschlag, Einstellungen |
 | `sync/` | Hintergrund-Aktualisierung (WorkManager) |
-| `widget/` | Glance-Widget mit größenabhängigen Layouts |
+| `widget/` | Widget (RemoteViews): Raster und Kartenstapel |
 | `ui/` | App-Oberfläche (Heute, Widget, Konto, Anmeldung) |
