@@ -1,12 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Wischmodus: Kartenstapel, der pro Wischbewegung eine Seite weiterspringt -->
+<!-- Wisch-Widget: Kartenstapel ohne eigenen Hintergrund – nur die Karten liegen auf dem Hintergrundbild -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@android:id/background"
+    android:id="@+id/sw_root"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@drawable/sw_root_bg"
-    android:backgroundTint="@color/sw_bg"
-    android:padding="6dp">
+    android:layout_height="match_parent">
 
     <StackView
         android:id="@+id/sw_stack"
@@ -18,6 +15,8 @@
         android:id="@+id/sw_empty"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="@drawable/sw_root_bg"
+        android:backgroundTint="@color/sw_bg"
         android:gravity="center"
         android:text="–"
         android:textColor="@color/sw_n_on" />

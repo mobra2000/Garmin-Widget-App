@@ -117,9 +117,10 @@ private class SwipeFactory(private val context: Context, private val appWidgetId
         val h = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 150).toFloat()
         val layout = WidgetLayout(w.dp, h.dp)
         detailed = layout.detailed
-        // 6 dp Rand; der Stapel braucht oben etwas Platz für die Karten dahinter
-        pageW = w - 12f
-        pageH = (h - 12f) * 0.88f
+        // Der Kartenstapel macht jede Karte 90 % so groß wie das Widget (der Rest zeigt
+        // die Karten dahinter) und lässt rundherum 4 dp Rand.
+        pageW = w * 0.9f - 8f
+        pageH = h * 0.9f - 8f
 
         pages = if (!loggedIn || snapshot.fetchedAt == 0L) {
             emptyList()

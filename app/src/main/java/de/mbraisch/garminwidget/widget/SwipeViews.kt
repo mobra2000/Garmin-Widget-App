@@ -48,15 +48,18 @@ object SwipeViews {
     fun page(context: Context, values: List<MetricValue>, pageW: Float, pageH: Float, detailed: Boolean): RemoteViews {
         val horizontal = pageW >= pageH
         return if (values.size >= 2) {
+            // gemeinsame Karte mit 6 dp Innenrand, darin zwei Kacheln mit 6 dp Abstand
+            val availW = pageW - 12f
+            val availH = pageH - 12f
             val rv = RemoteViews(context.packageName, if (horizontal) R.layout.sw_page_2h else R.layout.sw_page_2v)
-            val tileW = if (horizontal) (pageW - 6f) / 2 else pageW
-            val tileH = if (horizontal) pageH else (pageH - 6f) / 2
-            bindTile(context, rv, SLOT_A, values[0], tileW, tileH, detailed)
-            bindTile(context, rv, SLOT_B, values[1], tileW, tileH, detailed)
+            val tileW = if (horizontal) (availW - 6f) / 2 else availW
+            val tileH = if (horizontal) availH else (availH - 6f) / 2
+            bindTile(context, rv, SLOT_A, values[0], tileW, tileH, detailed, tilePadding = 8f)
+            bindTile(context, rv, SLOT_B, values[1], tileW, tileH, detailed, tilePadding = 8f)
             rv
         } else {
             val rv = RemoteViews(context.packageName, R.layout.sw_page_1)
-            bindTile(context, rv, SLOT_A, values[0], pageW, pageH, detailed)
+            bindTile(context, rv, SLOT_A, values[0], pageW, pageH, detailed, tilePadding = 12f)
             rv
         }
     }
@@ -93,12 +96,13 @@ object SwipeViews {
         tileW: Float,
         tileH: Float,
         detailed: Boolean,
+        tilePadding: Float,
     ) {
         val c = colorsFor(v)
         rv.tintBackground(context, ids.tile, c.container)
 
-        val innerW = tileW - 16f
-        val innerH = tileH - 16f
+        val innerW = tileW - 2 * tilePadding
+        val innerH = tileH - 2 * tilePadding
         val showSub = detailed && v.available && v.subtitle.isNotEmpty() && innerH >= 110f
         val ringSpace = minOf(innerW, innerH - if (showSub) 18f else 0f)
         val hasRing = v.available && v.progress != null && ringSpace >= 70f
@@ -112,7 +116,7 @@ object SwipeViews {
         }
 
         if (hasRing) {
-            val ring = ringSpace.coerceAtMost(150f)
+            val ring = ringSpace.coerceAtMost(180f)
             rv.setViewVisibility(ids.ring, View.VISIBLE)
             rv.setViewVisibility(ids.icon, View.GONE)
             rv.setViewVisibility(ids.value, View.GONE)

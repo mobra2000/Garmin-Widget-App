@@ -113,7 +113,7 @@ fun WidgetSettingsScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
         item {
             val manager = AppWidgetManager.getInstance(context)
             SettingsCard {
-                Text("Garmin Wischen (Test)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text("Garmin Wischen", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(6.dp))
                 Text(
                     "Eigenes Widget als Kartenstapel: Jeder Wisch nach oben oder unten blättert genau eine Seite weiter. Die Einstellung „Werte pro Seite“ gilt auch für das Durchscrollen im Raster-Widget.",

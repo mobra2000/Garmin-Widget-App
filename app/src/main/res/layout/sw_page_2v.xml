@@ -4,6 +4,11 @@
     android:id="@+id/sw_page"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:minWidth="2000dp"
+    android:minHeight="2000dp"
+    android:background="@drawable/sw_card_bg"
+    android:backgroundTint="@color/sw_bg"
+    android:padding="6dp"
     android:orientation="vertical">
 
     <FrameLayout
@@ -17,6 +22,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:layout_gravity="center"
             android:gravity="center"
             android:orientation="vertical">
 
@@ -111,6 +117,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:layout_gravity="center"
             android:gravity="center"
             android:orientation="vertical">
 
