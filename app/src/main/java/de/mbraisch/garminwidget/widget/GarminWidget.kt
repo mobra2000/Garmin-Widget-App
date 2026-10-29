@@ -9,7 +9,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.util.TypedValue
 import android.widget.RemoteViews
 import de.mbraisch.garminwidget.R
 import de.mbraisch.garminwidget.data.AppStore
@@ -95,12 +94,8 @@ class GarminWidgetReceiver : AppWidgetProvider() {
         private fun stack(context: Context, appWidgetId: Int, widthDp: Float, heightDp: Float): RemoteViews {
             val rv = RemoteViews(context.packageName, R.layout.widget_swipe)
             if (Build.VERSION.SDK_INT >= 31) {
-                // Der Kartenstapel zeigt die vorderste Karte auf 90 % der Fläche und die Karten
-                // dahinter nach oben rechts versetzt. Wir machen den Stapel um diese 10 % größer
-                // als das Widget und schieben den Überstand nach oben/rechts aus dem sichtbaren
-                // Bereich – dann ist nur die vorderste Karte zu sehen, in voller Widget-Größe.
-                rv.setViewLayoutMargin(R.id.sw_stack, RemoteViews.MARGIN_TOP, -heightDp / 9f, TypedValue.COMPLEX_UNIT_DIP)
-                rv.setViewLayoutMargin(R.id.sw_stack, RemoteViews.MARGIN_RIGHT, -widthDp / 9f, TypedValue.COMPLEX_UNIT_DIP)
+                // Alle Karten deckungsgleich auf dem Widget – nur senkrechte Bewegung beim Wischen
+                SwipeGeometry.apply(context, rv, R.id.sw_stack, widthDp, heightDp)
             }
             val serviceIntent = Intent(context, SwipeWidgetService::class.java)
                 .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)

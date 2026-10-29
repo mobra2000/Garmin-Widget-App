@@ -1,15 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Wisch-Widget: Kartenstapel ohne eigenen Hintergrund – nur die Karten liegen auf dem Hintergrundbild -->
+<!-- Wisch-Widget: Kartenstapel, auf die abgerundete Widget-Form zugeschnitten – sichtbar ist nur die vorderste Karte -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/sw_root"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@drawable/sw_clip_bg"
+    android:clipToOutline="true">
 
+    <!-- Das Theme macht den Leuchtrand unsichtbar, den Android beim Wischen um die Karte zeichnet -->
     <StackView
         android:id="@+id/sw_stack"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:loopViews="true" />
+        android:loopViews="true"
+        android:theme="@style/ThemeOverlay.GarminWidget.Stack" />
 
     <TextView
         android:id="@+id/sw_empty"

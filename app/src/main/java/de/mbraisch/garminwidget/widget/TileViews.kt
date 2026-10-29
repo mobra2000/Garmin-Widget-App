@@ -12,6 +12,7 @@ import de.mbraisch.garminwidget.data.Accent
 import de.mbraisch.garminwidget.data.MetricType
 import de.mbraisch.garminwidget.data.MetricValue
 import de.mbraisch.garminwidget.data.Tone
+import kotlin.math.roundToInt
 
 /**
  * Baut die Kacheln des Widgets als RemoteViews – für den Rastermodus (1–4 Kacheln)
@@ -114,9 +115,13 @@ object TileViews {
     // ------------------------------------------------------------------
 
     /** Eine Karte mit 1 oder 2 Werten; [pageW]/[pageH] = Größe der Karte in dp. */
-    fun page(context: Context, values: List<MetricValue>, pageW: Float, pageH: Float, detailed: Boolean): RemoteViews {
+    /**
+     * Eine Karte im Wischmodus. [pageW]/[pageH] ist der sichtbare Bereich; [bleed] (dp) ragt die
+     * Karte rundherum darüber hinaus (siehe [SwipeGeometry]) – der Inhalt bleibt im sichtbaren Teil.
+     */
+    fun page(context: Context, values: List<MetricValue>, pageW: Float, pageH: Float, detailed: Boolean, bleed: Float = 0f): RemoteViews {
         val horizontal = pageW >= pageH
-        return if (values.size >= 2) {
+        val rv = if (values.size >= 2) {
             // gemeinsame Karte mit 6 dp Innenrand, darin zwei Kacheln mit 6 dp Abstand
             val availW = pageW - 12f
             val availH = pageH - 12f
@@ -125,12 +130,25 @@ object TileViews {
             val tileH = if (horizontal) availH else (availH - GAP) / 2
             bindTile(context, rv, SLOTS[0], values[0], tileW, tileH, detailed, tilePadding = 8f)
             bindTile(context, rv, SLOTS[1], values[1], tileW, tileH, detailed, tilePadding = 8f)
+            if (bleed > 0f) rv.paddingDp(context, R.id.sw_page, 6f + bleed)
             rv
         } else {
             val rv = RemoteViews(context.packageName, R.layout.sw_page_1)
             bindTile(context, rv, SLOTS[0], values[0], pageW, pageH, detailed, tilePadding = 12f)
+            if (bleed > 0f) rv.paddingDp(context, SLOTS[0].tile, 12f + bleed)
             rv
         }
+        if (bleed > 0f && Build.VERSION.SDK_INT >= 31) {
+            // feste Kartengröße – nur so liegen die Karten im Stapel deckungsgleich
+            rv.setViewLayoutWidth(R.id.sw_page, pageW + 2 * bleed, TypedValue.COMPLEX_UNIT_DIP)
+            rv.setViewLayoutHeight(R.id.sw_page, pageH + 2 * bleed, TypedValue.COMPLEX_UNIT_DIP)
+        }
+        return rv
+    }
+
+    private fun RemoteViews.paddingDp(context: Context, id: Int, dp: Float) {
+        val px = (dp * context.resources.displayMetrics.density).roundToInt()
+        setViewPadding(id, px, px, px, px)
     }
 
     // ------------------------------------------------------------------

@@ -12,8 +12,8 @@ android {
         applicationId = "de.mbraisch.garminwidget"
         minSdk = 26
         targetSdk = 35
-        versionCode = 9
-        versionName = "1.8"
+        versionCode = 10
+        versionName = "1.9"
     }
 
     // Eigener, fester Signaturschlüssel: So lässt sich jede neu gebaute APK
