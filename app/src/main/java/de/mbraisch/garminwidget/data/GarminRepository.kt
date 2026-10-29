@@ -243,7 +243,8 @@ class GarminRepository(context: Context) {
     }
 }
 
-private const val NOT_SUPPORTED = "Für dein Gerät nicht verfügbar"
+private const val NO_DATA = "Keine Daten von Garmin"
+private const val NO_NIGHT_DATA = "Keine Daten von letzter Nacht"
 private const val LOAD_FAILED = "Konnte nicht geladen werden"
 private const val NO_DATA_YET = "Noch keine Daten"
 
@@ -260,7 +261,7 @@ private class ParsedData(
     val bodyBatteryFallback: Fetch<JSONArray>?,
     val today: LocalDate,
 ) {
-    private fun reason(f: Fetch<*>?, missing: String = NOT_SUPPORTED) =
+    private fun reason(f: Fetch<*>?, missing: String = NO_DATA) =
         if (f is Fetch.Failed) LOAD_FAILED else missing
 
     // ---------- Trainingsstatus & Belastung (gemeinsame Quelle) ----------
@@ -570,7 +571,7 @@ private class ParsedData(
             ?: sleepDto?.num("avgOvernightHrv")
             ?: sleep.data()?.num("avgOvernightHrv")
             ?: sleepDto?.num("avgSleepHRV")
-            ?: return MetricValue.unavailable(type, reason(hrv))
+            ?: return MetricValue.unavailable(type, reason(hrv, NO_NIGHT_DATA))
         val weekly = hrvSummary?.num("weeklyAvg")
         val baseline = hrvSummary?.obj("baseline")
         val low = baseline?.num("balancedLow")
