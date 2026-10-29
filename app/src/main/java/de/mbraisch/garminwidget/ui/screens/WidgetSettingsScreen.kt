@@ -41,7 +41,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.mbraisch.garminwidget.R
-import de.mbraisch.garminwidget.data.DisplayMode
 import de.mbraisch.garminwidget.data.MetricType
 import de.mbraisch.garminwidget.data.WidgetSettings
 import de.mbraisch.garminwidget.ui.MainViewModel
@@ -64,7 +63,7 @@ fun WidgetSettingsScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
         item {
             Text("Widget", style = MaterialTheme.typography.headlineLarge)
             Text(
-                "Es gibt zwei Widgets. Die Einstellungen gelten für alle Garmin-Widgets auf deinem Startbildschirm.",
+                "Es gibt zwei Widgets: eins für mehrere Werte gleichzeitig und eins zum Durchwischen. Die Kachel-Auswahl gilt für beide.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -74,24 +73,10 @@ fun WidgetSettingsScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
         item {
             val manager = AppWidgetManager.getInstance(context)
             SettingsCard {
-                Text("Garmin Raster", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(12.dp))
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                    val modes = listOf(DisplayMode.GRID to "Mehrere Werte", DisplayMode.SWIPE to "Durchscrollen")
-                    modes.forEachIndexed { index, (mode, label) ->
-                        SegmentedButton(
-                            selected = settings.mode == mode,
-                            onClick = { vm.updateSettings { it.copy(mode = mode) } },
-                            shape = SegmentedButtonDefaults.itemShape(index = index, count = modes.size),
-                        ) { Text(label) }
-                    }
-                }
-                Spacer(Modifier.height(8.dp))
+                Text("Garmin Raster – mehrere Werte", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(6.dp))
                 Text(
-                    if (settings.mode == DisplayMode.GRID)
-                        "1×1 → 1 Wert, 2×1 und 1×2 → 2, 3×1 → 3, ab 2×2 → 4 Werte gleichzeitig. Große Widgets (ab 3×4) zeigen kleine Zusatzinfos."
-                    else
-                        "1 oder 2 Werte pro Seite (siehe unten); die übrigen erreichst du durch Scrollen im Widget.",
+                    "1×1 → 1 Wert, 2×1 und 1×2 → 2, 3×1 → 3, ab 2×2 → 4 Werte gleichzeitig. Große Widgets (ab 3×4) zeigen kleine Zusatzinfos.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -113,10 +98,10 @@ fun WidgetSettingsScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
         item {
             val manager = AppWidgetManager.getInstance(context)
             SettingsCard {
-                Text("Garmin Wischen", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text("Garmin Wischen – ein Wert pro Wisch", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Eigenes Widget als Kartenstapel: Jeder Wisch nach oben oder unten blättert genau eine Seite weiter. Die Einstellung „Werte pro Seite“ gilt auch für das Durchscrollen im Raster-Widget.",
+                    "Kartenstapel: Jeder Wisch nach oben oder unten springt genau eine Karte weiter. Dafür dieses Widget auf den Startbildschirm legen – das Raster-Widget kann nicht wischen.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

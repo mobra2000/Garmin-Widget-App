@@ -14,7 +14,23 @@ data class SuggestionInput(
     val acwrStatus: String? = null,          // z. B. "OPTIMAL", "HIGH", "VERY_HIGH"
     val loadFocus: String? = null,           // z. B. "AEROBIC_HIGH_SHORTAGE"
     val hrvStatus: String? = null,           // z. B. "BALANCED", "LOW"
+    /** Dein übliches Lauftempo in s/km (Median deiner letzten Läufe) – Basis für die Zielpace. */
+    val usualPaceSecPerKm: Double? = null,
+    /** VO2max als Ersatz, falls es keine Läufe gibt. */
+    val vo2max: Double? = null,
     val date: LocalDate = LocalDate.now(),
+)
+
+/** Ein konkretes Lauftraining: Dauer bzw. Wiederholungen + Zielpace. */
+private data class Workout(
+    val title: String,
+    val short: String,
+    /** z. B. "40 min" oder "6 × 2 min" */
+    val volume: String,
+    /** Abstand der Zielpace zu deinem üblichen Tempo in s/km (positiv = langsamer); null = kein Lauf */
+    val paceOffset: Int?,
+    val what: String,
+    val why: String,
 )
 
 /**
@@ -89,33 +105,53 @@ object SuggestionEngine {
             input.hrvStatus?.takeIf { it != "NONE" }, input.acwrStatus, input.trainingStatus,
         ).count { it != null }
 
-        val (title, subtitle, why) = when {
-            knownInputs == 0 -> Triple("Grundlagenlauf", "35–45 min · Zone 2", "Noch zu wenig Daten für eine genauere Empfehlung")
-            fatigue >= 4 -> Triple("Ruhetag", "Pause oder lockeres Gehen", "Dein Körper braucht Erholung")
-            fatigue == 3 -> Triple("Regeneration", "20–30 min · Zone 1", "Nur ganz locker, um die Erholung zu fördern")
-            fatigue == 2 -> Triple("Lockerer Lauf", "30–40 min · Zone 2", "Locker bleiben, keine Intensität")
-            focus.contains("ANAEROBIC_SHORTAGE") ->
-                Triple("Intervalle", "6 × 2 min schnell · 2 min Trab", "Dir fehlt anaerobe Belastung")
-            focus.contains("AEROBIC_HIGH_SHORTAGE") ->
-                Triple("Tempolauf", "3 × 8 min Schwelle · 3 min Trab", "Dir fehlt hoch aerobe Belastung")
-            focus.contains("AEROBIC_LOW_SHORTAGE") ->
-                Triple("Grundlage lang", "60–75 min · Zone 2", "Dir fehlt niedrig aerobe Belastung")
-            weekend -> Triple("Langer Lauf", "70–90 min · Zone 2", "Wochenende – Zeit für die lange Einheit")
-            fatigue == 1 -> Triple("Grundlagenlauf", "35–45 min · Zone 2", "Gute Basis, aber nicht ganz frisch")
-            else -> Triple("Grundlage + Steigerungen", "40–50 min · Zone 2 · 4 × 20 s", "Du bist erholt")
+        val w = when {
+            knownInputs == 0 -> Workout("Grundlagenlauf", "Grundlage", "40 min", 20,
+                GRUNDLAGE, "Noch zu wenig Daten für eine genauere Empfehlung")
+            fatigue >= 4 -> Workout("Ruhetag", "Ruhetag", "Pause", null,
+                "Heute kein Lauf – höchstens ein Spaziergang.", "Dein Körper braucht Erholung")
+            fatigue == 3 -> Workout("Regeneration", "Regeneration", "25 min", 60,
+                "Ganz lockerer Lauf (Zone 1), deutlich langsamer als sonst.", "Nur locker, um die Erholung zu fördern")
+            fatigue == 2 -> Workout("Lockerer Lauf", "Locker", "35 min", 25,
+                "Lockerer Dauerlauf (Zone 2), keine schnellen Abschnitte.", "Locker bleiben, keine Intensität")
+            focus.contains("ANAEROBIC_SHORTAGE") -> Workout("Intervalle", "Intervalle", "6 × 2 min", -75,
+                "Einlaufen, dann 6 × 2 min schnell mit je 2 min Trabpause, auslaufen.", "Dir fehlt anaerobe Belastung")
+            focus.contains("AEROBIC_HIGH_SHORTAGE") -> Workout("Tempolauf", "Tempo", "3 × 8 min", -45,
+                "Einlaufen, dann 3 × 8 min an der Schwelle mit je 3 min Trabpause, auslaufen.", "Dir fehlt hoch aerobe Belastung")
+            focus.contains("AEROBIC_LOW_SHORTAGE") -> Workout("Grundlage lang", "Lang & locker", "70 min", 30,
+                GRUNDLAGE, "Dir fehlt niedrig aerobe Belastung")
+            weekend -> Workout("Langer Lauf", "Lang", "80 min", 30,
+                GRUNDLAGE, "Wochenende – Zeit für die lange Einheit")
+            fatigue == 1 -> Workout("Grundlagenlauf", "Grundlage", "40 min", 20,
+                GRUNDLAGE, "Gute Basis, aber nicht ganz frisch")
+            else -> Workout("Grundlage + Steigerungen", "Grundlage", "45 min", 20,
+                "$GRUNDLAGE Am Ende 4 × 20 s zügig steigern.", "Du bist erholt")
+        }
+
+        val pace = w.paceOffset?.let { offset -> referencePace(input)?.let { formatPace(it + offset) } }
+        val subtitle = when {
+            w.paceOffset == null -> w.volume
+            pace != null -> "${w.volume} · $pace"
+            else -> w.volume
         }
 
         val detail = buildString {
-            append(why)
+            append(w.what)
+            append(" ").append(w.why)
             if (reasons.isNotEmpty()) append(" (").append(reasons.joinToString(", ")).append(")")
-            append(". Vorschlag der App auf Basis deiner Garmin-Werte.")
+            append(".")
+            if (pace != null && input.usualPaceSecPerKm != null) {
+                append(" Zielpace aus deinen letzten Läufen (üblich ${formatPace(input.usualPaceSecPerKm)}).")
+            } else if (pace != null) {
+                append(" Zielpace aus deiner VO2max geschätzt.")
+            }
         }
 
         return MetricValue(
             type = type,
             available = true,
-            value = title,
-            short = SHORT_TITLES[title] ?: title,
+            value = w.title,
+            short = w.short,
             subtitle = subtitle,
             detail = detail,
             tone = when {
@@ -127,15 +163,28 @@ object SuggestionEngine {
         )
     }
 
-    /** Kurzformen fürs Widget */
-    private val SHORT_TITLES = mapOf(
-        "Grundlage + Steigerungen" to "Grundlage",
-        "Grundlagenlauf" to "Grundlage",
-        "Grundlage lang" to "Lang & locker",
-        "Lockerer Lauf" to "Locker",
-        "Langer Lauf" to "Lang",
-        "Tempolauf" to "Tempo",
-    )
+    private const val GRUNDLAGE =
+        "Grundlage = ruhiger Dauerlauf in Zone 2: Du kannst dich dabei noch gut unterhalten."
+
+    /**
+     * Bezugstempo in s/km: dein übliches Tempo, sonst aus der VO2max geschätzt
+     * (Formel nach Jack Daniels für ~68 % der VO2max ≈ übliches lockeres Tempo).
+     */
+    private fun referencePace(input: SuggestionInput): Double? {
+        input.usualPaceSecPerKm?.let { return it }
+        val vo2 = input.vo2max ?: return null
+        // VO2 = -4.60 + 0.182258·v + 0.000104·v²  (v in m/min) → nach v auflösen
+        val target = 0.68 * vo2 + 4.60
+        val v = (-0.182258 + Math.sqrt(0.182258 * 0.182258 + 4 * 0.000104 * target)) / (2 * 0.000104)
+        if (v <= 0) return null
+        return 60_000.0 / v // s pro km
+    }
+
+    /** 380 → "6:20/km" (auf 5 s gerundet, wie auf der Uhr) */
+    fun formatPace(secPerKm: Double): String {
+        val total = (Math.round(secPerKm / 5.0) * 5).toInt().coerceIn(150, 900)
+        return "%d:%02d/km".format(total / 60, total % 60)
+    }
 
     fun statusLabel(status: String?): String = when (status) {
         "PRODUCTIVE" -> "Produktiv"

@@ -34,6 +34,7 @@ import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import de.mbraisch.garminwidget.data.Accent
+import de.mbraisch.garminwidget.data.MetricType
 import de.mbraisch.garminwidget.data.MetricValue
 import de.mbraisch.garminwidget.data.Tone
 import de.mbraisch.garminwidget.ui.OpenFromWidgetActivity
@@ -85,7 +86,10 @@ fun TileView(
     val innerW = width - pad * 2
     val innerH = height - pad * 2
 
-    val showSub = detailed && value.available && value.subtitle.isNotEmpty() && innerH >= 110.dp
+    // Beim Trainingsvorschlag gehören Dauer und Pace zum Wert ("40 min · 6:20/km") und stehen immer da
+    val isSuggestion = value.type == MetricType.SUGGESTION
+    val showSub = (detailed || isSuggestion) && value.available && value.subtitle.isNotEmpty() &&
+        innerH >= (if (isSuggestion) 56.dp else 110.dp)
     val ringH = innerH - if (showSub) 18.dp else 0.dp
     val hasRing = value.available && value.progress != null && min(innerW, ringH) >= 58.dp
     val wide = innerW >= innerH * 1.7f
@@ -120,7 +124,7 @@ private fun RingTile(v: MetricValue, colors: TileColors, w: Dp, h: Dp, showSub: 
         Ring(v, colors, ringSize)
         if (showSub) {
             Spacer(GlanceModifier.height(4.dp))
-            WText(v.subtitle, 11f, colors.onContainer, maxLines = 1, center = true)
+            WText(v.subtitle, if (v.type == MetricType.SUGGESTION) 13f else 11f, colors.onContainer, maxLines = 1, center = true)
         }
     }
 }
@@ -140,7 +144,7 @@ private fun PlainTile(v: MetricValue, colors: TileColors, w: Dp, h: Dp, showSub:
         ValueLine(v, colors, w, minDim, center = true)
         if (showSub) {
             Spacer(GlanceModifier.height(2.dp))
-            WText(v.subtitle, 11f, colors.onContainer, maxLines = 1, center = true)
+            WText(v.subtitle, if (v.type == MetricType.SUGGESTION) 13f else 11f, colors.onContainer, maxLines = 1, center = true)
         }
     }
 }
@@ -162,7 +166,7 @@ private fun WideTile(v: MetricValue, colors: TileColors, w: Dp, h: Dp, showSub: 
         Spacer(GlanceModifier.width(10.dp))
         Column(verticalAlignment = Alignment.Vertical.CenterVertically) {
             ValueLine(v, colors, w * 0.6f, h, center = false)
-            if (showSub) WText(v.subtitle, 11f, colors.onContainer, maxLines = 1)
+            if (showSub) WText(v.subtitle, if (v.type == MetricType.SUGGESTION) 13f else 11f, colors.onContainer, maxLines = 1)
         }
     }
 }

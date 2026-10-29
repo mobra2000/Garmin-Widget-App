@@ -82,6 +82,14 @@ class GarminRepository(context: Context) {
         val readinessJob = async { fetch { client.get("/metrics-service/metrics/trainingreadiness/$todayStr") } }
         val hrvJob = async { fetch { client.getObject("/hrv-service/hrv/$todayStr") } }
         val calendarJob = async { fetch { client.getObject("/calendar-service/year/${today.year}/month/${today.monthValue - 1}") } }
+        val runsJob = async {
+            fetch {
+                client.getArray(
+                    "/activitylist-service/activities/search/activities",
+                    mapOf("start" to "0", "limit" to "20", "activityType" to "running"),
+                )
+            }
+        }
 
         val summary = summaryJob.await()
         val sleep = sleepJob.await()
@@ -89,6 +97,7 @@ class GarminRepository(context: Context) {
         val readiness = readinessJob.await()
         val hrv = hrvJob.await()
         val calendar = calendarJob.await()
+        val runs = runsJob.await()
 
         // Anmeldung abgelaufen? Dann sofort melden statt lauter leerer Werte.
         listOf(summary, sleep, status, readiness, hrv, calendar)
@@ -111,6 +120,7 @@ class GarminRepository(context: Context) {
             readiness = readiness,
             hrv = hrv,
             calendar = calendar,
+            runs = runs,
             vo2Fallback = vo2Fallback,
             bodyBatteryFallback = bodyBatteryFallback,
             today = today,
@@ -245,6 +255,7 @@ private class ParsedData(
     val readiness: Fetch<Any>,
     val hrv: Fetch<JSONObject>,
     val calendar: Fetch<JSONObject>,
+    val runs: Fetch<JSONArray>,
     val vo2Fallback: Fetch<Any>?,
     val bodyBatteryFallback: Fetch<JSONArray>?,
     val today: LocalDate,
@@ -351,16 +362,35 @@ private class ParsedData(
 
     // ---------- VO2max ----------
 
-    fun vo2max(): MetricValue {
-        val type = MetricType.VO2MAX
+    private val vo2Source: JSONObject? = run {
         val fromStatus = status.data()?.obj("mostRecentVO2Max")?.obj("generic")
         val fromFallback = when (val d = vo2Fallback?.data()) {
             is JSONObject -> d.obj("generic") ?: d
             is JSONArray -> d.objects().lastOrNull()?.let { it.obj("generic") ?: it }
             else -> null
         }
-        val src = fromStatus ?: fromFallback
-        val value = src?.num("vo2MaxPreciseValue") ?: src?.num("vo2MaxValue")
+        fromStatus ?: fromFallback
+    }
+    val vo2Value: Double? = vo2Source?.num("vo2MaxPreciseValue") ?: vo2Source?.num("vo2MaxValue")
+
+    /**
+     * Dein übliches Lauftempo in s/km: Median der Läufe ab 2,5 km aus den letzten 60 Tagen.
+     */
+    val usualPaceSecPerKm: Double? = run {
+        val cutoff = today.minusDays(60).toString()
+        val paces = runs.data()?.objects().orEmpty()
+            .filter { (it.str("startTimeLocal") ?: "") >= cutoff }
+            .filter { (it.num("distance") ?: 0.0) >= 2500.0 }
+            .mapNotNull { it.num("averageSpeed")?.takeIf { v -> v in 1.5..7.0 } }
+            .map { 1000.0 / it }
+            .sorted()
+        if (paces.size < 2) null else paces[paces.size / 2]
+    }
+
+    fun vo2max(): MetricValue {
+        val type = MetricType.VO2MAX
+        val src = vo2Source
+        val value = vo2Value
             ?: return MetricValue.unavailable(type, reason(status))
         val date = src?.str("calendarDate")
         val fitnessAge = src?.num("fitnessAge")
@@ -613,6 +643,8 @@ private class ParsedData(
                 acwrStatus = acwrStatus,
                 loadFocus = loadFocusKey,
                 hrvStatus = hrvStatusKey,
+                usualPaceSecPerKm = usualPaceSecPerKm,
+                vo2max = vo2Value,
                 date = today,
             )
         )

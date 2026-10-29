@@ -22,8 +22,6 @@ import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.appWidgetBackground
 import androidx.glance.appwidget.cornerRadius
-import androidx.glance.appwidget.lazy.LazyColumn
-import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -40,7 +38,6 @@ import androidx.glance.layout.size
 import androidx.glance.layout.width
 import de.mbraisch.garminwidget.R
 import de.mbraisch.garminwidget.data.AppStore
-import de.mbraisch.garminwidget.data.DisplayMode
 import de.mbraisch.garminwidget.data.MetricValue
 import de.mbraisch.garminwidget.data.Snapshot
 import de.mbraisch.garminwidget.data.WidgetSettings
@@ -112,7 +109,6 @@ private fun WidgetRoot(state: WidgetState) {
         !state.loggedIn -> MessageWidget(if (layout.isTiny) "Anmelden" else "In der App anmelden", openApp = true)
         state.settings.tiles.isEmpty() -> MessageWidget("Kacheln wählen", openApp = true)
         state.snapshot.fetchedAt == 0L -> MessageWidget(if (state.syncing) "Lädt…" else "Keine Daten", openApp = true)
-        state.settings.mode == DisplayMode.SWIPE -> ScrollWidget(state, layout)
         else -> GridWidget(state, layout)
     }
 }
@@ -241,33 +237,6 @@ private fun TileGroup(values: List<MetricValue>, w: Dp, h: Dp, detailed: Boolean
 }
 
 private enum class Arrangement { SINGLE, ROW, COLUMN, GRID }
-
-// ---------------------------------------------------------------------------
-// Durchscrollen: 1–2 Werte pro Seite, jede Seite so hoch wie das Widget
-// ---------------------------------------------------------------------------
-
-@Composable
-private fun ScrollWidget(state: WidgetState, layout: WidgetLayout) {
-    val perPage = if (layout.isTiny) 1 else state.settings.perPage
-    val pages = state.settings.tiles.map { state.snapshot[it] }.chunked(perPage)
-    val pad = layout.padding
-    val innerW = layout.width - pad * 2
-    val innerH = layout.height - pad * 2
-    Box(
-        modifier = GlanceModifier
-            .fillMaxSize()
-            .widgetBackgroundShape()
-            .padding(pad),
-    ) {
-        LazyColumn(modifier = GlanceModifier.fillMaxSize()) {
-            items(pages.indices.toList(), itemId = { it.toLong() }) { index ->
-                Box(modifier = GlanceModifier.fillMaxWidth().height(innerH)) {
-                    TileGroup(pages[index], innerW, innerH, layout.detailed)
-                }
-            }
-        }
-    }
-}
 
 // ---------------------------------------------------------------------------
 // Kopfzeile (nur große Widgets): Uhrzeit + Aktualisieren

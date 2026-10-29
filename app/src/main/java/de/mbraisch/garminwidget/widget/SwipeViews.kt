@@ -8,6 +8,7 @@ import android.widget.RemoteViews
 import androidx.annotation.ColorRes
 import de.mbraisch.garminwidget.R
 import de.mbraisch.garminwidget.data.Accent
+import de.mbraisch.garminwidget.data.MetricType
 import de.mbraisch.garminwidget.data.MetricValue
 import de.mbraisch.garminwidget.data.Tone
 
@@ -103,13 +104,16 @@ object SwipeViews {
 
         val innerW = tileW - 2 * tilePadding
         val innerH = tileH - 2 * tilePadding
-        val showSub = detailed && v.available && v.subtitle.isNotEmpty() && innerH >= 110f
+        val isSuggestion = v.type == MetricType.SUGGESTION
+        val showSub = (detailed || isSuggestion) && v.available && v.subtitle.isNotEmpty() &&
+            innerH >= (if (isSuggestion) 56f else 110f)
         val ringSpace = minOf(innerW, innerH - if (showSub) 18f else 0f)
         val hasRing = v.available && v.progress != null && ringSpace >= 70f
 
         if (showSub) {
             rv.setViewVisibility(ids.sub, View.VISIBLE)
             rv.setTextViewText(ids.sub, v.subtitle)
+            rv.setTextViewTextSize(ids.sub, TypedValue.COMPLEX_UNIT_SP, if (isSuggestion) 14f else 11f)
             rv.textColor(context, ids.sub, c.on)
         } else {
             rv.setViewVisibility(ids.sub, View.GONE)
