@@ -26,7 +26,7 @@ private fun <T> Fetch<T>.data(): T? = (this as? Fetch.Ok<T>)?.data
 class GarminRepository(context: Context) {
 
     private val appContext = context.applicationContext
-    val client = GarminClient(appContext)
+    val client = GarminClient.get(appContext)
     val store = AppStore(appContext)
 
     /** Nach der Anmeldung im WebView: Ticket tauschen, Profil laden, erste Synchronisation. */
@@ -129,14 +129,24 @@ class GarminRepository(context: Context) {
         }
 
         val failures = listOf(summary, sleep, status, readiness, hrv, calendar).filterIsInstance<Fetch.Failed>()
+        val firstError = failures.firstOrNull()?.error?.message ?: "unbekannter Fehler"
+        val previous = store.currentSnapshot()
+
+        // Alles fehlgeschlagen: alte Werte behalten, nur den Fehler vermerken
+        if (failures.size == 6) {
+            return@coroutineScope previous.copy(error = "Aktualisierung fehlgeschlagen: $firstError")
+        }
+
+        // Einzelne Werte fehlgeschlagen: dort den letzten bekannten Wert behalten
+        val merged = metrics.mapValues { (type, value) ->
+            val old = previous.metrics[type]
+            if (!value.available && value.subtitle == LOAD_FAILED && old != null && old.available) old else value
+        }
         val error = when {
             failures.isEmpty() -> null
-            failures.any { it.error is GarminBlockedException } ->
-                "Garmin hat einzelne Anfragen abgelehnt – später erneut versuchen"
-            failures.size == 6 -> "Keine Verbindung zu Garmin Connect"
-            else -> null
+            else -> "Einige Werte konnten nicht aktualisiert werden: $firstError"
         }
-        Snapshot(fetchedAt = System.currentTimeMillis(), metrics = metrics, error = error)
+        Snapshot(fetchedAt = System.currentTimeMillis(), metrics = merged, error = error)
     }
 
     /**

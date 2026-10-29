@@ -32,7 +32,7 @@ class GarminBlockedException(message: String) : IOException(message)
  * Die Endpunkte sind nicht offiziell dokumentiert (Vorbild: python-garminconnect)
  * und können sich ändern.
  */
-class GarminClient(context: Context) {
+class GarminClient private constructor(context: Context) {
 
     private val tokenStore = TokenStore(context)
     private val refreshMutex = Mutex()
@@ -106,9 +106,9 @@ class GarminClient(context: Context) {
         val (code, body) = response
         when {
             code == 401 -> throw AuthExpiredException("Anmeldung abgelaufen")
-            code == 403 || code == 429 -> throw GarminBlockedException("Garmin hat die Anfrage abgelehnt (HTTP $code)")
+            code == 403 || code == 429 -> throw GarminBlockedException("Garmin hat die Anfrage abgelehnt (HTTP $code, ${path.split('/').getOrElse(1) { path }})")
             code == 204 || code == 404 -> null
-            code !in 200..299 -> throw IOException("HTTP $code bei $path")
+            code !in 200..299 -> throw IOException("HTTP $code (${path.split('/').getOrElse(1) { path }})")
             body.isBlank() -> null
             else -> runCatching { JSONTokener(body).nextValue() }.getOrNull()
         }
@@ -138,8 +138,16 @@ class GarminClient(context: Context) {
     private suspend fun validTokens(): Tokens {
         val tokens = tokenStore.load() ?: throw AuthExpiredException("Nicht angemeldet")
         val exp = jwtClaim(tokens.accessToken, "exp")?.toLongOrNull()
-        val expiresSoon = exp != null && exp * 1000 - System.currentTimeMillis() < 5 * 60 * 1000
-        return if (expiresSoon) refresh(tokens, force = false) else tokens
+        val msLeft = if (exp != null) exp * 1000 - System.currentTimeMillis() else Long.MAX_VALUE
+        if (msLeft > 5 * 60 * 1000) return tokens
+        return try {
+            refresh(tokens, force = false)
+        } catch (e: AuthExpiredException) {
+            throw e
+        } catch (e: IOException) {
+            // Erneuerung gerade nicht möglich – solange das alte Token noch gilt, damit weitermachen
+            if (msLeft > 30 * 1000) tokens else throw e
+        }
     }
 
     private suspend fun refresh(old: Tokens, force: Boolean): Tokens = refreshMutex.withLock {
@@ -151,6 +159,18 @@ class GarminClient(context: Context) {
             if (exp != null && exp * 1000 - System.currentTimeMillis() > 5 * 60 * 1000) return current
         }
         val refreshToken = current.refreshToken ?: throw AuthExpiredException("Kein Refresh-Token")
+        try {
+            return doRefresh(current, refreshToken)
+        } catch (e: AuthExpiredException) {
+            throw e
+        } catch (e: IOException) {
+            // Einmal kurz warten und erneut versuchen (Netzwerk-/Serverfehler)
+            kotlinx.coroutines.delay(1500)
+            return doRefresh(current, refreshToken)
+        }
+    }
+
+    private fun doRefresh(current: Tokens, refreshToken: String): Tokens {
 
         val body = FormBody.Builder()
             .add("grant_type", "refresh_token")
@@ -166,11 +186,12 @@ class GarminClient(context: Context) {
             .header("Cache-Control", "no-cache")
             .build()
         http.newCall(request).execute().use { resp ->
+            val text = resp.body?.string().orEmpty()
             if (resp.code == 400 || resp.code == 401) {
-                throw AuthExpiredException("Anmeldung abgelaufen – bitte neu anmelden")
+                throw AuthExpiredException("Anmeldung abgelaufen – bitte neu anmelden (HTTP ${resp.code} ${text.take(80)})")
             }
-            if (!resp.isSuccessful) throw IOException("Token-Erneuerung fehlgeschlagen (HTTP ${resp.code})")
-            val json = JSONObject(resp.body?.string().orEmpty())
+            if (!resp.isSuccessful) throw IOException("Token-Erneuerung fehlgeschlagen (HTTP ${resp.code} ${text.take(80)})")
+            val json = JSONObject(text)
             val access = json.optString("access_token")
             if (access.isBlank()) throw IOException("Token-Erneuerung ohne Token")
             val updated = Tokens(
@@ -194,6 +215,18 @@ class GarminClient(context: Context) {
         .header("Accept-Language", "de-DE,de;q=0.9,en;q=0.8")
 
     companion object {
+        @Volatile
+        private var instance: GarminClient? = null
+
+        /**
+         * Eine gemeinsame Instanz für App, Widget und Hintergrund-Aktualisierung,
+         * damit das Token nie von zwei Stellen gleichzeitig erneuert wird.
+         */
+        fun get(context: Context): GarminClient =
+            instance ?: synchronized(this) {
+                instance ?: GarminClient(context.applicationContext).also { instance = it }
+            }
+
         /** Anmeldeseite der Garmin-Connect-App (gleiches Verfahren wie die offizielle App). */
         const val SSO_CLIENT_ID = "GCM_IOS_DARK"
         const val SERVICE_URL = "https://mobile.integration.garmin.com/gcm/ios"
